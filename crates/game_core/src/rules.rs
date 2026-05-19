@@ -93,16 +93,21 @@ impl GameState {
         let placed_lane = self.active_lane;
         self.settled_row[placed_lane] = Some(mushroom);
 
-        let row_cleared = self.settled_row.iter().all(Option::is_some);
-        let awarded_points = if row_cleared {
-            self.score += self.config.points_per_clear;
-            for slot in &mut self.settled_row {
-                *slot = None;
-            }
-            self.config.points_per_clear
+        let mut awarded_points = if correct_lane {
+            self.score += self.config.points_per_correct;
+            self.config.points_per_correct
         } else {
             0
         };
+
+        let row_cleared = self.settled_row.iter().all(Option::is_some);
+        if row_cleared {
+            self.score += self.config.points_per_clear;
+            awarded_points += self.config.points_per_clear;
+            for slot in &mut self.settled_row {
+                *slot = None;
+            }
+        }
 
         Ok(PlacementFeedback {
             correct_lane,

@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FallingMushroom {
     pub id: String,
+    pub display_name: String,
     pub target_lane: usize,
 }
 
@@ -8,6 +9,7 @@ pub struct FallingMushroom {
 pub struct GameConfig {
     pub lane_count: usize,
     pub points_per_clear: u32,
+    pub points_per_correct: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

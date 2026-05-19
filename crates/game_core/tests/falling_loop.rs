@@ -3,6 +3,7 @@ use game_core::{FallingMushroom, GameConfig, GameError, GameState};
 fn mushroom(id: &str, target_lane: usize) -> FallingMushroom {
     FallingMushroom {
         id: id.to_owned(),
+        display_name: id.to_owned(),
         target_lane,
     }
 }
@@ -12,6 +13,7 @@ fn rejects_zero_lane_games() {
     let result = GameState::new(GameConfig {
         lane_count: 0,
         points_per_clear: 50,
+        points_per_correct: 10,
     });
 
     assert_eq!(result, Err(GameError::InvalidLaneCount));
@@ -22,6 +24,7 @@ fn movement_stays_inside_lane_bounds() {
     let mut game = GameState::new(GameConfig {
         lane_count: 4,
         points_per_clear: 50,
+        points_per_correct: 10,
     })
     .unwrap();
 
@@ -41,6 +44,7 @@ fn hard_drop_reports_incorrect_lane_without_clearing() {
     let mut game = GameState::new(GameConfig {
         lane_count: 3,
         points_per_clear: 50,
+        points_per_correct: 10,
     })
     .unwrap();
 
@@ -59,19 +63,22 @@ fn filling_the_row_clears_and_scores() {
     let mut game = GameState::new(GameConfig {
         lane_count: 2,
         points_per_clear: 75,
+        points_per_correct: 10,
     })
     .unwrap();
 
     game.spawn(mushroom("boletus", 0), 0).unwrap();
     let first_feedback = game.hard_drop().unwrap();
+    assert!(first_feedback.correct_lane);
     assert!(!first_feedback.row_cleared);
+    assert_eq!(first_feedback.awarded_points, 10);
 
     game.spawn(mushroom("morel", 1), 1).unwrap();
     let second_feedback = game.hard_drop().unwrap();
 
     assert!(second_feedback.correct_lane);
     assert!(second_feedback.row_cleared);
-    assert_eq!(second_feedback.awarded_points, 75);
-    assert_eq!(game.score(), 75);
+    assert_eq!(second_feedback.awarded_points, 85);
+    assert_eq!(game.score(), 95);
     assert!(game.settled_row().iter().all(Option::is_none));
 }
