@@ -1,4 +1,5 @@
 mod app;
+mod catalog;
 mod input;
 mod render;
 mod settings;
@@ -54,12 +55,13 @@ fn bind_keyboard_events(
     let context = Rc::new(context.clone());
     let document = document.clone();
     let app = Rc::clone(app);
-    let keyboard_handler = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |event| {
+    let doc_for_closure = document.clone();
+    let keyboard_handler = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |event: web_sys::KeyboardEvent| {
         if let Some(action) = map_key_to_action(&event.key()) {
             event.prevent_default();
             let mut app = app.borrow_mut();
             app.handle_action(action);
-            sync_overlay(&document, &app);
+            sync_overlay(&doc_for_closure, &app);
             render_app(&context, &app);
         }
     });

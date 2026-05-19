@@ -1,5 +1,6 @@
-use game_core::{FallingMushroom, GameConfig, GameState};
+use game_core::{GameConfig, GameState};
 
+use crate::catalog::pick_mushroom;
 use crate::input::InputAction;
 use crate::settings::PlayerSettings;
 
@@ -15,6 +16,7 @@ impl AppState {
         let game = GameState::new(GameConfig {
             lane_count: settings.lane_count,
             points_per_clear: settings.points_per_clear,
+            points_per_correct: settings.points_per_correct,
         })
         .expect("settings create a valid game configuration");
 
@@ -35,11 +37,7 @@ impl AppState {
             return;
         }
 
-        let target_lane = self.next_mushroom_id % self.settings.lane_count;
-        let mushroom = FallingMushroom {
-            id: format!("prototype-{}", self.next_mushroom_id),
-            target_lane,
-        };
+        let mushroom = pick_mushroom(self.next_mushroom_id);
 
         self.game
             .spawn(mushroom, self.settings.spawn_lane.min(self.settings.lane_count - 1))
