@@ -21,6 +21,9 @@
   - Tested independently
   - Deployed independently
   - Demonstrated to users independently
+
+  For interactive features, scenarios MUST also make controls, feedback timing,
+  and configuration behavior testable from a user perspective.
 -->
 
 ### User Story 1 - [Brief Title] (Priority: P1)
@@ -83,6 +86,8 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+  Include any consistency, validation, or responsiveness rules that are required
+  for the user experience to stay coherent.
 -->
 
 ### Functional Requirements
@@ -108,6 +113,8 @@
 <!--
   ACTION REQUIRED: Define measurable success criteria.
   These must be technology-agnostic and measurable.
+  For interactive features, include at least one responsiveness or consistency
+  outcome that a user can observe.
 -->
 
 ### Measurable Outcomes

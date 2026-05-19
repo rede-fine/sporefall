@@ -40,7 +40,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Code quality: Name the main modules, state owners, and any non-obvious design
+  decisions that may need brief why-comments.
+- Testing: List the automated checks that cover player-visible rules, controls,
+  scoring, and configuration changes. State the cheapest failing-first check.
+- UX consistency: Confirm controls, labels, and feedback stay consistent across
+  screens, levels, and mode changes.
+- Performance: Record the hot path, expected browser budget, and the validation
+  method for any per-frame or animation-sensitive work.
+- Delivery: Break implementation into revertable slices and propose plain-language
+  commit messages for each slice.
 
 ## Project Structure
 
