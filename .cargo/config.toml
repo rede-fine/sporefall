@@ -1,0 +1,7 @@
+[alias]
+xtest = "test -p game_core"
+web-check = "check -p web_app --target wasm32-unknown-unknown"
+pipeline-check = "check -p data_pipeline"
+
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg=web_sys_unstable_apis"]
