@@ -1,5 +1,15 @@
-use game_core::{FallingMushroom, GameConfig, GameState};
+mod app;
+mod input;
+mod render;
+mod settings;
+
+use app::AppState;
+use input::map_key_to_action;
+use render::{draw, RenderState};
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 #[wasm_bindgen(start)]
@@ -17,54 +27,54 @@ pub fn start() -> Result<(), JsValue> {
         .ok_or_else(|| JsValue::from_str("missing 2d context"))?
         .dyn_into::<CanvasRenderingContext2d>()?;
 
-    let mut game = GameState::new(GameConfig {
-        lane_count: 4,
-        points_per_clear: 100,
-    })
-    .map_err(|error| JsValue::from_str(&format!("config error: {error:?}")))?;
+    let app = Rc::new(RefCell::new(AppState::new(Default::default())));
+    app.borrow_mut().ensure_active_mushroom();
 
-    // Seed one piece so the browser shell proves the Rust game core is active.
-    game.spawn(
-        FallingMushroom {
-            id: "amanita-muscaria".to_owned(),
-            target_lane: 2,
-        },
-        1,
-    )
-    .map_err(|error| JsValue::from_str(&format!("spawn error: {error:?}")))?;
-
-    render_placeholder(&context, &game);
+    sync_overlay(&document, &app.borrow());
+    render_app(&context, &app.borrow());
+    bind_keyboard_events(&document, &context, &app)?;
     Ok(())
 }
 
-fn render_placeholder(context: &CanvasRenderingContext2d, game: &GameState) {
-    context.set_fill_style_str("#1a2218");
-    context.fill_rect(0.0, 0.0, 960.0, 540.0);
-
-    context.set_fill_style_str("#f8f3e8");
-    context.set_font("bold 48px Georgia");
-    let _ = context.fill_text("Sporefall", 48.0, 74.0);
-
-    context.set_font("24px Georgia");
-    let _ = context.fill_text("Rust/WASM gameplay core connected", 48.0, 118.0);
-
-    context.set_font("18px Georgia");
-    let _ = context.fill_text(
-        &format!("Active lane: {} | Score: {}", game.active_lane(), game.score()),
-        48.0,
-        152.0,
+fn render_app(context: &CanvasRenderingContext2d, app: &AppState) {
+    draw(
+        context,
+        &RenderState {
+            game: &app.game,
+            feedback: app.feedback_message(),
+        },
     );
+}
 
-    for lane_index in 0..4 {
-        let x = 72.0 + lane_index as f64 * 210.0;
-        context.set_fill_style_str("#314233");
-        context.fill_rect(x, 220.0, 160.0, 240.0);
-        context.set_fill_style_str("#d4b375");
-        let _ = context.fill_text(&format!("Lane {}", lane_index + 1), x + 34.0, 500.0);
+fn bind_keyboard_events(
+    document: &web_sys::Document,
+    context: &CanvasRenderingContext2d,
+    app: &Rc<RefCell<AppState>>,
+) -> Result<(), JsValue> {
+    let context = Rc::new(context.clone());
+    let document = document.clone();
+    let app = Rc::clone(app);
+    let keyboard_handler = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |event| {
+        if let Some(action) = map_key_to_action(&event.key()) {
+            event.prevent_default();
+            let mut app = app.borrow_mut();
+            app.handle_action(action);
+            sync_overlay(&document, &app);
+            render_app(&context, &app);
+        }
+    });
+
+    document.add_event_listener_with_callback("keydown", keyboard_handler.as_ref().unchecked_ref())?;
+    keyboard_handler.forget();
+    Ok(())
+}
+
+fn sync_overlay(document: &web_sys::Document, app: &AppState) {
+    if let Some(score_node) = document.get_element_by_id("score-value") {
+        score_node.set_text_content(Some(&app.game.score().to_string()));
     }
 
-    context.set_fill_style_str("#e08d52");
-    context.begin_path();
-    let _ = context.arc(362.0, 176.0, 34.0, 0.0, std::f64::consts::TAU);
-    context.fill();
+    if let Some(feedback_node) = document.get_element_by_id("feedback-value") {
+        feedback_node.set_text_content(Some(app.feedback_message().unwrap_or("Move with arrow keys, then press space to drop.")));
+    }
 }

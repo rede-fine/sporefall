@@ -65,6 +65,36 @@ body {
   backdrop-filter: blur(12px);
 }
 
+.hud {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hud-panel {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(31, 38, 31, 0.08);
+  border: 1px solid rgba(31, 38, 31, 0.1);
+}
+
+.hud-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#score-value,
+#feedback-value {
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
+
 #game-canvas {
   display: block;
   width: 100%;
@@ -77,6 +107,10 @@ body {
   .app-shell {
     width: min(100vw - 20px, 1120px);
     padding-top: 20px;
+  }
+
+  .hud {
+    grid-template-columns: 1fr;
   }
 
   .playfield-card {
