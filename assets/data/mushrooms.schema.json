@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sporefall.dev/schemas/mushrooms.schema.json",
+  "title": "Sporefall Mushroom Dataset",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "record_id",
+      "scientific_name",
+      "common_name",
+      "region",
+      "ecological_guild",
+      "taxonomic_group",
+      "functional_group",
+      "season_window",
+      "color_group",
+      "image_asset_id",
+      "image_license",
+      "image_attribution",
+      "source_provenance"
+    ],
+    "properties": {
+      "record_id": { "type": "string", "minLength": 1 },
+      "catalogue_of_life_id": { "type": "string" },
+      "index_fungorum_id": { "type": "string" },
+      "scientific_name": { "type": "string", "minLength": 1 },
+      "common_name": { "type": "string", "minLength": 1 },
+      "region": { "type": "string", "minLength": 1 },
+      "ecological_guild": {
+        "type": "string",
+        "enum": ["Saprotrophic", "Mycorrhizal", "Parasitic", "Endophytic"]
+      },
+      "taxonomic_group": { "type": "string", "minLength": 1 },
+      "functional_group": { "type": "string", "minLength": 1 },
+      "season_window": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string", "minLength": 1 }
+      },
+      "color_group": { "type": "string", "minLength": 1 },
+      "image_asset_id": { "type": "string", "minLength": 1 },
+      "image_license": { "type": "string", "minLength": 1 },
+      "image_attribution": { "type": "string", "minLength": 1 },
+      "source_provenance": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "additionalProperties": false
+  }
+}
