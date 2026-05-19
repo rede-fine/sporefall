@@ -8,6 +8,8 @@
 
 **Organization**: Tasks are grouped by user story to preserve independent delivery and testing.
 
+**Status**: MVP playable in browser (trunk serve on port 8080). Phase 3 complete.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
