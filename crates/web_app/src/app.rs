@@ -1,10 +1,14 @@
 use game_core::{FallingMushroom, GameConfig, GameState};
 use std::collections::HashSet;
 
-use crate::catalog::{pick_mushroom, CategoryMode, Variety};
+use crate::catalog::{
+    built_in_catalog, cap_catalog, pick_mushroom, CategoryMode, RuntimeCatalogEntry, Variety,
+};
 use crate::facts::basket_fact;
+use crate::inat::ImportSummary;
 use crate::input::InputAction;
 use crate::settings::PlayerSettings;
+use crate::ui::{self, Viewport};
 
 /// Difficulty level affects what info is shown (game mode).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,7 +37,7 @@ impl Difficulty {
     pub fn description(&self) -> &'static str {
         match self {
             Self::Normal => "Photo + Common Name + Latin Name",
-            Self::Tricky => "Photo only — no names!",
+            Self::Tricky => "Photo only - no names!",
             Self::Expert => "Emoji + Latin name only",
         }
     }
@@ -75,12 +79,12 @@ pub enum GamePhase {
     Menu,
     Playing,
     Paused,
-    /// Row cleared — show basket animation + fun fact
+    /// Row cleared - show basket animation + fun fact
     BasketFact {
         mushrooms: Vec<FallingMushroom>,
         fact: String,
     },
-    /// All mushrooms in this level sorted — review basket then proceed
+    /// All mushrooms in this level sorted - review basket then proceed
     LevelComplete,
     GameOver,
 }
@@ -93,9 +97,9 @@ pub struct AppState {
     pub variety: Variety,
     pub current_level: usize, // 0-3
     pub category_mode: CategoryMode,
-    pub menu_selection: usize,   // 0-2 for difficulty (left column)
+    pub menu_selection: usize,    // 0-2 for difficulty (left column)
     pub variety_selection: usize, // 0-2 for variety (right column)
-    pub menu_column: usize,      // 0=left (difficulty), 1=right (variety)
+    pub menu_column: usize,       // 0=left (difficulty), 1=right (variety)
     /// Y position of falling mushroom (0.0 = top, 1.0 = landed)
     pub fall_progress: f64,
     /// Speed: fraction of height per second
@@ -112,6 +116,11 @@ pub struct AppState {
     pub animation: Option<CenterAnimation>,
     /// Pending basket fact to show after basket animation completes
     pending_basket_fact: Option<(Vec<FallingMushroom>, String)>,
+    active_catalog: Vec<RuntimeCatalogEntry>,
+    imported_catalog: Vec<RuntimeCatalogEntry>,
+    pub import_summary: Option<ImportSummary>,
+    using_imported_catalog: bool,
+    pub viewport: Viewport,
 }
 
 impl AppState {
@@ -143,6 +152,11 @@ impl AppState {
             collected_mushrooms: Vec::new(),
             animation: None,
             pending_basket_fact: None,
+            active_catalog: built_in_catalog(Variety::Small),
+            imported_catalog: Vec::new(),
+            import_summary: None,
+            using_imported_catalog: false,
+            viewport: Viewport::default(),
         }
     }
 
@@ -150,12 +164,92 @@ impl AppState {
         self.feedback_message.as_deref()
     }
 
-    pub fn start_game(&mut self) {
+    pub fn active_catalog_len(&self) -> usize {
+        self.active_catalog.len()
+    }
+
+    pub fn set_viewport(&mut self, viewport: Viewport) {
+        self.viewport = viewport;
+    }
+
+    pub fn active_source_label(&self) -> &'static str {
+        if self.using_imported_catalog {
+            "iNaturalist"
+        } else {
+            "Curated"
+        }
+    }
+
+    pub fn active_source_summary(&self) -> Option<String> {
+        if self.using_imported_catalog {
+            self.import_summary.as_ref().map(|summary| {
+                format!(
+                    "@{} - {} matched species",
+                    summary.user_login, summary.matched_species_count
+                )
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn menu_import_summary(&self) -> Option<String> {
+        self.import_summary.as_ref().map(|summary| {
+            format!(
+                "Last import: @{} - {} playable species from {} to {}",
+                summary.user_login,
+                summary.matched_species_count,
+                summary.start_date,
+                summary.end_date
+            )
+        })
+    }
+
+    pub fn remember_import(
+        &mut self,
+        imported_catalog: Vec<RuntimeCatalogEntry>,
+        summary: ImportSummary,
+    ) {
+        self.imported_catalog = imported_catalog;
+        self.import_summary = Some(summary.clone());
+        self.feedback_message = Some(format!(
+            "Loaded {} playable iNaturalist species for @{}.",
+            summary.matched_species_count, summary.user_login
+        ));
+        self.phase = GamePhase::Menu;
+    }
+
+    pub fn start_imported_game(&mut self) -> Result<(), String> {
+        if self.imported_catalog.is_empty() {
+            return Err("Import observations first.".to_owned());
+        }
+
+        self.difficulty = Difficulty::all()[self.menu_selection];
+        self.variety = Variety::all()[self.variety_selection];
+        self.using_imported_catalog = true;
         self.current_level = 0;
-        self.category_mode = CategoryMode::for_level(0);
         self.total_baskets = 0;
         self.collected_mushrooms.clear();
+        self.prepare_active_catalog();
         self.start_level();
+        Ok(())
+    }
+
+    pub fn start_game(&mut self) {
+        self.using_imported_catalog = false;
+        self.current_level = 0;
+        self.total_baskets = 0;
+        self.collected_mushrooms.clear();
+        self.prepare_active_catalog();
+        self.start_level();
+    }
+
+    fn prepare_active_catalog(&mut self) {
+        self.active_catalog = if self.using_imported_catalog && !self.imported_catalog.is_empty() {
+            cap_catalog(&self.imported_catalog, self.variety)
+        } else {
+            built_in_catalog(self.variety)
+        };
     }
 
     fn start_level(&mut self) {
@@ -172,11 +266,19 @@ impl AppState {
         self.fall_progress = 0.0;
         self.animation = None;
         self.pending_basket_fact = None;
-        self.feedback_message = Some(format!(
-            "Level {} — Sort by {}!",
-            self.current_level + 1,
-            self.category_mode.display_name()
-        ));
+        self.feedback_message = Some(if self.using_imported_catalog {
+            format!(
+                "Level {} - Sort your iNaturalist fungi by {}!",
+                self.current_level + 1,
+                self.category_mode.display_name()
+            )
+        } else {
+            format!(
+                "Level {} - Sort by {}!",
+                self.current_level + 1,
+                self.category_mode.display_name()
+            )
+        });
         self.ensure_active_mushroom();
     }
 
@@ -194,23 +296,20 @@ impl AppState {
             return;
         }
 
-        // Retry queue takes priority (wrong mushrooms re-enter)
         let mushroom = if let Some(retry) = self.game.pop_retry() {
             retry
         } else {
-            // Pick a mushroom not yet correctly sorted this level
             match pick_mushroom(
                 self.next_mushroom_id,
                 self.category_mode,
-                self.variety,
+                &self.active_catalog,
                 &self.sorted_this_level,
             ) {
-                Some(m) => {
+                Some(mushroom) => {
                     self.next_mushroom_id += 1;
-                    m
+                    mushroom
                 }
                 None => {
-                    // All mushrooms sorted! Level complete
                     self.phase = GamePhase::LevelComplete;
                     return;
                 }
@@ -218,20 +317,21 @@ impl AppState {
         };
 
         self.game
-            .spawn(mushroom, self.settings.spawn_lane.min(self.settings.lane_count - 1))
+            .spawn(
+                mushroom,
+                self.settings.spawn_lane.min(self.settings.lane_count - 1),
+            )
             .expect("spawn lane stays within configured bounds");
         self.fall_progress = 0.0;
     }
 
     /// Advance falling animation and center animations. Returns true if mushroom auto-landed.
     pub fn tick(&mut self, dt_seconds: f64) -> bool {
-        // Advance center animation
         if let Some(ref mut anim) = self.animation {
             anim.advance(dt_seconds);
             if anim.is_done() {
                 let was_basket = matches!(anim, CenterAnimation::BasketCollected { .. });
                 self.animation = None;
-                // After basket animation, show the fact screen
                 if was_basket {
                     if let Some((mushrooms, fact)) = self.pending_basket_fact.take() {
                         self.phase = GamePhase::BasketFact { mushrooms, fact };
@@ -261,33 +361,28 @@ impl AppState {
             Ok(feedback) => {
                 if feedback.row_cleared {
                     self.total_baskets += 1;
-                    // Add cleared mushrooms to collection
-                    for m in &feedback.cleared_mushrooms {
-                        self.collected_mushrooms.push(m.clone());
+                    for mushroom in &feedback.cleared_mushrooms {
+                        self.collected_mushrooms.push(mushroom.clone());
                     }
                     let fact = basket_fact(&feedback.cleared_mushrooms);
-                    // Start basket animation, then show fact
                     self.animation = Some(CenterAnimation::BasketCollected { progress: 0.0 });
                     self.pending_basket_fact = Some((feedback.cleared_mushrooms, fact));
                     self.feedback_message = Some(format!(
-                        "\u{1f9fa} Basket #{} collected! +{} points!",
+                        "Basket #{} collected! +{} points!",
                         self.total_baskets, feedback.awarded_points
                     ));
                 } else if feedback.correct_lane {
-                    // Track correctly sorted mushroom
                     self.sorted_this_level.insert(feedback.mushroom_id.clone());
                     self.animation = Some(CenterAnimation::Correct { progress: 0.0 });
                     self.feedback_message = Some(format!(
-                        "\u{2705} Correct! {} \u{2192} basket (+{})",
+                        "Correct! {} -> basket (+{})",
                         feedback.mushroom_name, feedback.awarded_points
                     ));
                     self.ensure_active_mushroom();
                 } else {
                     self.animation = Some(CenterAnimation::Wrong { progress: 0.0 });
-                    self.feedback_message = Some(format!(
-                        "\u{274c} Wrong bucket for {}",
-                        feedback.mushroom_name
-                    ));
+                    self.feedback_message =
+                        Some(format!("Wrong bucket for {}", feedback.mushroom_name));
                     self.ensure_active_mushroom();
                 }
             }
@@ -308,22 +403,37 @@ impl AppState {
         }
     }
 
+    pub fn handle_pointer(&mut self, x: f64, y: f64) {
+        match &self.phase {
+            GamePhase::Menu => self.handle_menu_pointer(x, y),
+            GamePhase::Playing => self.handle_play_pointer(x, y),
+            GamePhase::Paused => self.handle_pause_pointer(x, y),
+            GamePhase::BasketFact { .. } => self.handle_basket_pointer(x, y),
+            GamePhase::LevelComplete => self.handle_level_complete_pointer(x, y),
+            GamePhase::GameOver => self.handle_gameover_pointer(x, y),
+        }
+    }
+
     fn handle_menu_action(&mut self, action: InputAction) {
         let diff_count = Difficulty::all().len();
         let var_count = Variety::all().len();
         match action {
             InputAction::MoveUp => {
                 if self.menu_column == 0 {
-                    if self.menu_selection > 0 { self.menu_selection -= 1; }
-                } else {
-                    if self.variety_selection > 0 { self.variety_selection -= 1; }
+                    if self.menu_selection > 0 {
+                        self.menu_selection -= 1;
+                    }
+                } else if self.variety_selection > 0 {
+                    self.variety_selection -= 1;
                 }
             }
             InputAction::MoveDown => {
                 if self.menu_column == 0 {
-                    if self.menu_selection + 1 < diff_count { self.menu_selection += 1; }
-                } else {
-                    if self.variety_selection + 1 < var_count { self.variety_selection += 1; }
+                    if self.menu_selection + 1 < diff_count {
+                        self.menu_selection += 1;
+                    }
+                } else if self.variety_selection + 1 < var_count {
+                    self.variety_selection += 1;
                 }
             }
             InputAction::MoveLeft => {
@@ -341,10 +451,43 @@ impl AppState {
         }
     }
 
+    fn handle_menu_pointer(&mut self, x: f64, y: f64) {
+        let layout = ui::menu_layout(self.viewport);
+        if let Some(index) = layout
+            .difficulty_cards
+            .iter()
+            .position(|card| card.contains(x, y))
+        {
+            self.menu_column = 0;
+            self.menu_selection = index;
+            return;
+        }
+
+        if let Some(index) = layout
+            .variety_cards
+            .iter()
+            .position(|card| card.contains(x, y))
+        {
+            self.menu_column = 1;
+            self.variety_selection = index;
+            return;
+        }
+
+        if layout.start_button.contains(x, y) {
+            self.difficulty = Difficulty::all()[self.menu_selection];
+            self.variety = Variety::all()[self.variety_selection];
+            self.start_game();
+        }
+    }
+
     fn handle_play_action(&mut self, action: InputAction) {
         match action {
-            InputAction::MoveLeft => { let _ = self.game.move_left(); }
-            InputAction::MoveRight => { let _ = self.game.move_right(); }
+            InputAction::MoveLeft => {
+                let _ = self.game.move_left();
+            }
+            InputAction::MoveRight => {
+                let _ = self.game.move_right();
+            }
             InputAction::HardDrop | InputAction::Confirm => {
                 self.do_drop();
             }
@@ -358,13 +501,28 @@ impl AppState {
         }
     }
 
+    fn handle_play_pointer(&mut self, x: f64, y: f64) {
+        let layout = ui::play_layout(self.viewport, self.game.lane_count());
+        if layout.pause_button.contains(x, y) {
+            self.phase = GamePhase::Paused;
+            return;
+        }
+
+        if let Some(index) = layout
+            .lane_hit_rects
+            .iter()
+            .position(|rect| rect.contains(x, y))
+        {
+            self.select_lane_and_drop(index);
+        }
+    }
+
     fn handle_pause_action(&mut self, action: InputAction) {
         match action {
             InputAction::Pause | InputAction::Confirm => {
                 self.phase = GamePhase::Playing;
             }
             InputAction::HardDrop => {
-                // Quit to menu
                 self.phase = GamePhase::Menu;
                 self.feedback_message = None;
             }
@@ -372,14 +530,34 @@ impl AppState {
         }
     }
 
+    fn handle_pause_pointer(&mut self, x: f64, y: f64) {
+        let primary = ui::primary_button_rect(self.viewport);
+        if primary.contains(x, y) {
+            self.phase = GamePhase::Playing;
+            return;
+        }
+
+        let secondary = ui::secondary_button_rect(self.viewport);
+        if secondary.contains(x, y) {
+            self.phase = GamePhase::Menu;
+            self.feedback_message = None;
+        }
+    }
+
     fn handle_basket_action(&mut self, action: InputAction) {
         match action {
             InputAction::HardDrop | InputAction::Confirm => {
-                // Resume play after viewing fact
                 self.phase = GamePhase::Playing;
                 self.ensure_active_mushroom();
             }
             _ => {}
+        }
+    }
+
+    fn handle_basket_pointer(&mut self, x: f64, y: f64) {
+        if ui::primary_button_rect(self.viewport).contains(x, y) {
+            self.phase = GamePhase::Playing;
+            self.ensure_active_mushroom();
         }
     }
 
@@ -392,6 +570,12 @@ impl AppState {
         }
     }
 
+    fn handle_level_complete_pointer(&mut self, x: f64, y: f64) {
+        if ui::primary_button_rect(self.viewport).contains(x, y) {
+            self.advance_level();
+        }
+    }
+
     fn handle_gameover_action(&mut self, action: InputAction) {
         match action {
             InputAction::Confirm | InputAction::HardDrop => {
@@ -401,5 +585,26 @@ impl AppState {
             _ => {}
         }
     }
-}
 
+    fn handle_gameover_pointer(&mut self, x: f64, y: f64) {
+        if ui::primary_button_rect(self.viewport).contains(x, y) {
+            self.phase = GamePhase::Menu;
+            self.feedback_message = None;
+        }
+    }
+
+    fn select_lane_and_drop(&mut self, lane: usize) {
+        if self.game.active_mushroom().is_none() {
+            return;
+        }
+
+        while self.game.active_lane() < lane {
+            let _ = self.game.move_right();
+        }
+        while self.game.active_lane() > lane {
+            let _ = self.game.move_left();
+        }
+
+        self.do_drop();
+    }
+}
