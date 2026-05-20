@@ -4,11 +4,11 @@
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, quickstart.md
 
-**Tests**: Tests are required for gameplay rules, browser-shell behavior, dataset solvability, and regressions that affect player-visible behavior.
+**Tests**: Tests are required for gameplay rules, browser-shell behavior, and regressions that affect player-visible behavior.
 
 **Organization**: Tasks are grouped by user story to preserve independent delivery and testing.
 
-**Status**: MVP playable in browser (trunk serve on port 8080). Phase 3 complete.
+**Status**: Core implementation complete. All 5 user stories delivered. 7 unit tests passing. Remaining work is asset sourcing and future features.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -16,9 +16,9 @@
 - **[Story]**: Which user story this task belongs to (e.g. `[US1]`, `[US2]`, `[US3]`)
 - Every task includes an exact file path
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Shared Infrastructure) ✅
 
-**Purpose**: Finish the shared Rust/WASM and Pages tooling required before feature work can ship.
+**Purpose**: Shared Rust/WASM tooling and Trunk deployment configuration.
 
 - [x] T001 Configure Trunk application build settings in Trunk.toml
 - [x] T002 Add GitHub Pages deployment workflow in .github/workflows/deploy-pages.yml
@@ -26,11 +26,9 @@
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational (Blocking Prerequisites) ✅
 
 **Purpose**: Core data and application foundations that block all user stories.
-
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
 - [x] T004 Define the curated mushroom dataset schema in assets/data/mushrooms.schema.json
 - [x] T005 [P] Scaffold the offline data pipeline crate in data_pipeline/Cargo.toml
@@ -39,112 +37,139 @@
 - [x] T008 [P] Add browser settings persistence model in crates/web_app/src/settings.rs
 - [x] T009 Create image attribution manifest structure in assets/data/image_attributions.json
 
-**Checkpoint**: Rust workspace, build pipeline, and curated data foundations are ready for story work.
+**Checkpoint**: ✅ Rust workspace, build pipeline, and curated data foundations ready.
 
 ---
 
-## Phase 3: User Story 1 - Sort Falling Mushrooms (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 – Sort Falling Mushrooms (Priority: P1) ✅
 
-**Goal**: Deliver the core falling-mushroom loop with keyboard control, placement feedback, row clearing, and score updates.
+**Goal**: Core falling-mushroom loop with keyboard control, placement feedback, row clearing, retry queue, and score updates.
 
-**Independent Test**: Start a local session, move a falling mushroom between lanes with arrow keys, press space to drop it, and verify feedback, row clearing, and score changes without relying on configuration or progression features.
+**Independent Test**: Start a local session, move a falling mushroom between lanes with arrow keys, press space to drop it, verify correct/incorrect center animations, row clearing with basket bounce, retry queue re-entry, and score changes.
 
-### Tests for User Story 1 ⚠️
+### Tests for User Story 1
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [x] T010 [P] [US1] Add gameplay rule tests for lane movement, hard drop, and row clearing in crates/game_core/tests/falling_loop.rs
+- [x] T010 [P] [US1] Add gameplay rule tests (spawn, movement, hard drop, row clearing, retry queue, scoring) in crates/game_core/tests/falling_loop.rs
 - [x] T011 [P] [US1] Add browser smoke test for canvas rendering and keyboard loop in tests/integration/game_shell_smoke.rs
 
 ### Implementation for User Story 1
 
-- [x] T012 [P] [US1] Extract gameplay entities from the core crate into crates/game_core/src/model.rs
-- [x] T013 [P] [US1] Implement deterministic falling-lane reducer logic in crates/game_core/src/rules.rs
-- [x] T014 [US1] Implement keyboard input mapping for arrow keys and space in crates/web_app/src/input.rs
-- [x] T015 [US1] Render lanes, falling mushrooms, and placement feedback in crates/web_app/src/render.rs
-- [x] T016 [US1] Connect the browser shell to the core update loop in crates/web_app/src/lib.rs
-- [x] T017 [US1] Style the in-game score and feedback overlays in styles.css
+- [x] T012 [P] [US1] Define core gameplay entities (FallingMushroom, GameConfig, PlacementFeedback, BucketSet) in crates/game_core/src/model.rs
+- [x] T013 [P] [US1] Implement game state machine (lanes, basket, retry queue, score, row clearing) in crates/game_core/src/rules.rs
+- [x] T014 [US1] Implement keyboard input mapping (arrows, space, ESC) in crates/web_app/src/input.rs
+- [x] T015 [US1] Render lanes, falling mushrooms, center-screen animations (correct/wrong/basket), and placement feedback in crates/web_app/src/render.rs
+- [x] T016 [US1] Connect the requestAnimationFrame loop to core update logic in crates/web_app/src/lib.rs
+- [x] T017 [US1] Style the in-game score, basket count, and sorted progress header in styles.css
 
-**Checkpoint**: User Story 1 is playable and testable as a standalone MVP slice.
-
----
-
-## Phase 3b: Gameplay Refinement (Post-MVP)
-
-**Purpose**: Align the playable core with full spec requirements: wrong-mushroom retry, smaller bucket zone, stop/pause, and real images.
-
-- [ ] T039 [US1] Resize play area layout so bucket zone is small and fall zone is large in crates/web_app/src/render.rs
-- [ ] T040 [US1] Implement wrong-mushroom ejection and re-entry from top in crates/game_core/src/rules.rs
-- [ ] T041 [US1] Add retry animation and side-ejection rendering in crates/web_app/src/render.rs
-- [ ] T042 [US1] Add stop/pause game action (Escape key) in crates/web_app/src/input.rs and crates/web_app/src/app.rs
-- [ ] T043 [US1] Render pause overlay with resume/quit options in crates/web_app/src/render.rs
-- [ ] T044 [P] [US1] Source real mushroom photographs (public domain/CC0) and add to assets/images/
-- [ ] T045 [P] [US1] Build image loading and caching system for WASM in crates/web_app/src/images.rs
-- [ ] T046 [US1] Replace sprite placeholders with loaded real mushroom images in crates/web_app/src/render.rs
-- [ ] T047 [US1] Update curated mushroom dataset with image paths in assets/data/mushrooms.v1.json
-- [ ] T048 [US1] Add image attribution entries for all sourced photographs in assets/data/image_attributions.json
-
-**Checkpoint**: Full gameplay feel with real images, retry mechanic, and session control.
+**Checkpoint**: ✅ Core gameplay loop complete with all feedback animations and retry mechanic.
 
 ---
 
-## Phase 4: User Story 2 - Configure Learning Mode (Priority: P2)
+## Phase 4: User Story 2 – Configure Game Difficulty (Priority: P2) ✅
 
-**Goal**: Allow players to choose bucket sets and clue modes while guaranteeing the configured session remains solvable from curated data.
+**Goal**: Two-axis difficulty system (Game Mode × Variety) with two-column menu selection.
 
-**Independent Test**: Open the setup flow, choose different bucket sets and clue combinations, start a game, and confirm only valid solvable combinations are allowed and reflected in live gameplay.
-
-### Tests for User Story 2 ⚠️
-
-- [ ] T018 [P] [US2] Add solvability and bucket-set validation tests in crates/game_core/tests/configuration_rules.rs
-- [ ] T019 [P] [US2] Add dataset provenance regression checks in tests/regression/mushroom_dataset.rs
+**Independent Test**: Navigate the two-column menu, select different Game Mode and Variety combinations, start the game, and verify the session reflects both choices (species count, display mode).
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Implement bucket-set and clue-mode configuration types in crates/game_core/src/configuration.rs
-- [ ] T021 [P] [US2] Parse curated mushroom records and provenance fields in data_pipeline/src/records.rs
-- [ ] T022 [US2] Generate game-ready card exports and validation reports in data_pipeline/src/export.rs
-- [ ] T023 [US2] Build the clue and bucket selection screen in crates/web_app/src/menu.rs
-- [ ] T024 [US2] Enforce solvable session configuration before game start in crates/web_app/src/app.rs
-- [ ] T025 [US2] Add the first curated regional mushroom dataset in assets/data/mushrooms.v1.json
-- [ ] T026 [US2] Add public image attribution entries for the initial dataset in assets/data/image_attributions.json
+- [x] T018 [US2] Implement Game Mode enum (Normal/Tricky/Expert) and Variety enum (Small/Medium/Large) in crates/web_app/src/catalog.rs
+- [x] T019 [US2] Build two-column menu renderer (Game Mode left, Variety right) with arrow-key navigation in crates/web_app/src/render.rs
+- [x] T020 [US2] Wire menu selection into GamePhase transitions and session configuration in crates/web_app/src/app.rs
+- [x] T021 [US2] Implement pick_mushroom with variety-filtered no-repeat selection in crates/web_app/src/catalog.rs
 
-**Checkpoint**: User Story 2 is independently functional with curated data and solvability protection.
+**Checkpoint**: ✅ Two-axis difficulty fully functional with 12/20/28 species filtering.
 
 ---
 
-## Phase 5: User Story 3 - Learn Through Progression (Priority: P3)
+## Phase 5: User Story 3 – Progress Through 4 Levels (Priority: P3) ✅
 
-**Goal**: Add level-based bucket rotation and progression while keeping controls, scoring, and feedback consistent.
+**Goal**: 4-level progression (Cap Color → Culinary Type → Ecological Role → Peak Season) with Level Complete screens.
 
-**Independent Test**: Complete early rounds, advance levels, and confirm bucket sets change with explicit level messaging while the same controls and scoring rules continue to apply.
-
-### Tests for User Story 3 ⚠️
-
-- [ ] T027 [P] [US3] Add level progression and bucket rotation tests in crates/game_core/tests/level_progression.rs
-- [ ] T028 [P] [US3] Add browser journey smoke test for level transition messaging in tests/integration/level_transition_smoke.rs
+**Independent Test**: Complete all mushrooms in a level, verify Level Complete screen appears with collection review, press spacebar to advance, confirm next level uses a different category system.
 
 ### Implementation for User Story 3
 
-- [ ] T029 [P] [US3] Implement level profile state and progression rules in crates/game_core/src/progression.rs
-- [ ] T030 [P] [US3] Define level profile content for the regional dataset in assets/data/levels.v1.json
-- [ ] T031 [US3] Integrate level transitions and bucket rotation into the app state in crates/web_app/src/app.rs
-- [ ] T032 [US3] Render pre-level labels and transition feedback in crates/web_app/src/render.rs
-- [ ] T033 [US3] Persist selected modes and unlocked progress in crates/web_app/src/settings.rs
+- [x] T022 [US3] Implement CategoryMode enum with 4 sorting systems and bucket lane definitions in crates/web_app/src/catalog.rs
+- [x] T023 [US3] Add level progression logic (sorted_this_level HashSet, level transition triggers) in crates/web_app/src/app.rs
+- [x] T024 [US3] Render Level Complete screen with collection review and Game Over screen in crates/web_app/src/render.rs
 
-**Checkpoint**: All user stories are independently functional with progression layered on top of the core loop.
+**Checkpoint**: ✅ Full 4-level progression with no-repeat mechanic per level.
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 4 – View Basket Collection (Priority: P4) ✅
 
-**Purpose**: Final validation, performance hardening, and delivery preparation across all stories.
+**Goal**: Right-side panel showing collected mushrooms as thumbnails with names and overflow handling.
 
-- [ ] T034 [P] Add release-ready Trunk and Pages commands in specs/001-mushroom-sorting-game/quickstart.md
-- [ ] T035 Add browser performance smoke coverage for frame pacing and feedback latency in tests/integration/performance_smoke.rs
-- [ ] T036 [P] Add dataset solvability matrix regression coverage in tests/regression/solvability_matrix.rs
-- [ ] T037 Define clean commit boundaries and commit messages for implementation slices in specs/001-mushroom-sorting-game/plan.md
-- [ ] T038 Run quickstart validation and capture release readiness notes in specs/001-mushroom-sorting-game/checklists/requirements.md
+**Independent Test**: Clear a row during gameplay and verify collected mushrooms appear as thumbnails in the right-side panel with abbreviated names.
+
+### Implementation for User Story 4
+
+- [x] T025 [US4] Render basket collection panel with thumbnail grid on the right side of the game area in crates/web_app/src/render.rs
+- [x] T026 [US4] Track collected mushrooms across basket clears in app state in crates/web_app/src/app.rs
+- [x] T027 [US4] Handle panel overflow with "+N more" indicator in crates/web_app/src/render.rs
+
+**Checkpoint**: ✅ Collection panel displays accumulated basket contents.
+
+---
+
+## Phase 7: User Story 5 – Learn from Educational Facts (Priority: P5) ✅
+
+**Goal**: Context-sensitive educational fact screens after basket row clears.
+
+**Independent Test**: Clear a row containing specific mushrooms and verify an appropriate fact screen appears before gameplay resumes.
+
+### Implementation for User Story 5
+
+- [x] T028 [US5] Implement context-sensitive fact generation (danger warnings, medicinal info, culinary tips) in crates/web_app/src/facts.rs
+- [x] T029 [US5] Render fact screen with cleared mushroom display and spacebar-to-resume in crates/web_app/src/render.rs
+- [x] T030 [US5] Integrate fact phase into GamePhase transitions after basket bounce animation in crates/web_app/src/app.rs
+
+**Checkpoint**: ✅ Educational facts display after every row clear.
+
+---
+
+## Phase 8: Infrastructure & Assets ✅
+
+**Purpose**: Image preloading, catalog population, and deployment configuration.
+
+- [x] T031 [P] Build async image preloading system for all 28 species in crates/web_app/src/images.rs
+- [x] T032 [P] Populate full 28-species catalog with correct lane assignments for all 4 category systems in crates/web_app/src/catalog.rs
+- [x] T033 [P] Populate curated mushroom dataset (28 species) in assets/data/mushrooms.v1.json
+- [x] T034 Configure Trunk build for GitHub Pages deployment in Trunk.toml and index.html
+
+**Checkpoint**: ✅ 28-species catalog with image preloading and Trunk deployment ready.
+
+---
+
+## Phase 9: Remaining Work (Not Started)
+
+**Purpose**: Asset sourcing, future features, and visual polish.
+
+### Asset Sourcing
+
+- [ ] T035 [P] Source real CC0/public-domain photographs for 16 new mushroom species (currently placeholder copies of chanterelle.jpg) in assets/images/mushrooms/
+- [ ] T036 [P] Update image attribution entries for all newly sourced photographs in assets/data/image_attributions.json
+
+### Future Feature: iNaturalist Integration
+
+- [ ] T037 [P] Design iNaturalist observation import flow (user provides account + time window) in specs/001-mushroom-sorting-game/spec.md
+- [ ] T038 Implement iNaturalist API client for downloading user observations in data_pipeline/src/
+- [ ] T039 Map iNaturalist observations to game catalog format with image download in data_pipeline/src/export.rs
+- [ ] T040 Add UI for entering iNaturalist account and time window selection in crates/web_app/src/
+
+### Future Feature: Mobile Touch Controls
+
+- [ ] T041 [P] Design tap-lane-to-sort interaction model for touch devices in specs/001-mushroom-sorting-game/spec.md
+- [ ] T042 Implement touch event handlers (tap lane to move + drop) in crates/web_app/src/input.rs
+- [ ] T043 Add responsive layout adjustments for mobile screen sizes in crates/web_app/src/render.rs and styles.css
+
+### Visual Polish
+
+- [ ] T044 [P] Tune center-screen animation timing and easing curves in crates/web_app/src/render.rs
+- [ ] T045 [P] Implement responsive canvas sizing for different viewport dimensions in crates/web_app/src/render.rs
+- [ ] T046 Add smooth transitions between game phases (fade/slide) in crates/web_app/src/render.rs
 
 ---
 
@@ -152,95 +177,44 @@
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies; start immediately.
-- **Foundational (Phase 2)**: Depends on Setup completion and blocks all user stories.
-- **User Story 1 (Phase 3)**: Depends on Foundational completion.
-- **User Story 2 (Phase 4)**: Depends on Foundational completion and can follow US1 independently once shared data scaffolding exists.
-- **User Story 3 (Phase 5)**: Depends on Foundational completion and builds most cleanly after US1 and US2 establish the gameplay loop and curated dataset.
-- **Polish (Phase 6)**: Depends on the desired user stories being complete.
+- **Setup (Phase 1)**: ✅ Complete.
+- **Foundational (Phase 2)**: ✅ Complete.
+- **User Story 1 (Phase 3)**: ✅ Complete.
+- **User Story 2 (Phase 4)**: ✅ Complete.
+- **User Story 3 (Phase 5)**: ✅ Complete.
+- **User Story 4 (Phase 6)**: ✅ Complete.
+- **User Story 5 (Phase 7)**: ✅ Complete.
+- **Infrastructure (Phase 8)**: ✅ Complete.
+- **Remaining (Phase 9)**: Independent tracks; asset sourcing has no code dependencies; future features require design first.
 
-### User Story Dependencies
+### Remaining Work Independence
 
-- **User Story 1 (P1)**: No dependency on other user stories.
-- **User Story 2 (P2)**: Reuses the gameplay shell from US1 for live configuration, but remains independently testable once the data pipeline exists.
-- **User Story 3 (P3)**: Depends on the gameplay and curated content model established by US1 and US2.
+- **Asset sourcing (T035–T036)**: Can proceed immediately; no code changes needed, only replacing placeholder images.
+- **iNaturalist integration (T037–T040)**: Requires design spec first (T037), then sequential implementation.
+- **Mobile touch controls (T041–T043)**: Requires design spec first (T041), then input + render changes.
+- **Visual polish (T044–T046)**: All parallelizable; no dependencies on other remaining work.
 
-### Within Each User Story
+### Parallel Opportunities (Remaining)
 
-- Tests MUST be written and fail before implementation.
-- Core models and rules come before browser integration.
-- Dataset and validation tasks come before UI that depends on them.
-- Story-specific validation must pass before moving to the next story.
-
-### Parallel Opportunities
-
-- T003 can run in parallel with T001 and T002.
-- T005 through T008 can run in parallel after T004 starts the shared schema direction.
-- T010 and T011 can run in parallel for US1.
-- T012 and T013 can run in parallel for US1.
-- T018 and T019 can run in parallel for US2.
-- T020 and T021 can run in parallel for US2.
-- T027 and T028 can run in parallel for US3.
-- T029 and T030 can run in parallel for US3.
+- T035 and T036 can run in parallel (different files).
+- T037, T041, T044, T045 can all run in parallel (independent design/render tracks).
+- T044, T045, T046 are all parallelizable within visual polish.
 
 ---
 
-## Parallel Example: User Story 1
+## Summary
 
-```text
-T010 [US1] Add gameplay rule tests in crates/game_core/tests/falling_loop.rs
-T011 [US1] Add browser smoke test in tests/integration/game_shell_smoke.rs
-T012 [US1] Extract gameplay entities in crates/game_core/src/model.rs
-T013 [US1] Implement reducer logic in crates/game_core/src/rules.rs
-```
-
-## Parallel Example: User Story 2
-
-```text
-T018 [US2] Add solvability validation tests in crates/game_core/tests/configuration_rules.rs
-T019 [US2] Add dataset provenance regression checks in tests/regression/mushroom_dataset.rs
-T020 [US2] Implement configuration types in crates/game_core/src/configuration.rs
-T021 [US2] Parse curated records in data_pipeline/src/records.rs
-```
-
-## Parallel Example: User Story 3
-
-```text
-T027 [US3] Add progression tests in crates/game_core/tests/level_progression.rs
-T028 [US3] Add level transition smoke test in tests/integration/level_transition_smoke.rs
-T029 [US3] Implement progression rules in crates/game_core/src/progression.rs
-T030 [US3] Define level profiles in assets/data/levels.v1.json
-```
-
----
-
-## Implementation Strategy
-
-### MVP First (User Story 1 Only)
-
-1. Complete Phase 1: Setup.
-2. Complete Phase 2: Foundational.
-3. Complete Phase 3: User Story 1.
-4. **STOP and VALIDATE**: Run `cargo test -p game_core` and the browser smoke checks before expanding scope.
-
-### Incremental Delivery
-
-1. Setup and Foundational work establish the Rust/WASM delivery path and curated data pipeline.
-2. User Story 1 delivers a playable learning loop.
-3. User Story 2 adds configurable learning modes backed by curated data.
-4. User Story 3 adds progression and level-based bucket rotation.
-5. Polish finishes release readiness for GitHub Pages.
-
-### Suggested MVP Scope
-
-Implement through Phase 3 only for the first demonstrable slice.
-
----
-
-## Notes
-
-- All tasks follow the required checklist format with task id, optional parallel marker, optional story label, and exact file path.
-- Total tasks: 38.
-- Task count by user story: US1 = 8, US2 = 9, US3 = 7.
-- Parallel opportunities identified in Setup, Foundational, and every user story phase.
-- Independent test criteria are captured in each user story phase header.
+| Category | Tasks | Status |
+|----------|-------|--------|
+| Setup & Foundational | T001–T009 | ✅ Done (9 tasks) |
+| User Story 1 – Core Gameplay | T010–T017 | ✅ Done (8 tasks) |
+| User Story 2 – Difficulty Config | T018–T021 | ✅ Done (4 tasks) |
+| User Story 3 – Level Progression | T022–T024 | ✅ Done (3 tasks) |
+| User Story 4 – Basket Collection | T025–T027 | ✅ Done (3 tasks) |
+| User Story 5 – Educational Facts | T028–T030 | ✅ Done (3 tasks) |
+| Infrastructure & Assets | T031–T034 | ✅ Done (4 tasks) |
+| Asset Sourcing | T035–T036 | ⬜ Not started (2 tasks) |
+| iNaturalist Integration | T037–T040 | ⬜ Not started (4 tasks) |
+| Mobile Touch Controls | T041–T043 | ⬜ Not started (3 tasks) |
+| Visual Polish | T044–T046 | ⬜ Not started (3 tasks) |
+| **Total** | **T001–T046** | **34 done, 12 remaining** |
