@@ -14,11 +14,11 @@
 
 ### User Story 1 - Sort Falling Mushrooms (Priority: P1)
 
-As a player, I want to sort falling mushrooms into the correct bucket lane using keyboard controls so that I can practice recognizing mushroom traits through play.
+As a player, I want to sort falling mushrooms into the correct bucket lane using keyboard or pointer controls so that I can practice recognizing mushroom traits through play.
 
 **Why this priority**: This is the core gameplay loop. Without falling mushrooms, bucket lanes, movement controls, and scoring, no other feature can function.
 
-**Independent Test**: Start a game, use arrow keys to move the mushroom left/right, press spacebar to drop it into a bucket, and verify correct/incorrect feedback is shown.
+**Independent Test**: Start a game, use arrow keys or click/tap a lane to place the mushroom, and verify correct/incorrect feedback is shown.
 
 **Acceptance Scenarios**:
 
@@ -29,6 +29,7 @@ As a player, I want to sort falling mushrooms into the correct bucket lane using
 5. **Given** a mushroom placed in the wrong bucket, **When** placement resolves, **Then** a red X animation plays at center screen and the mushroom is ejected to the retry queue.
 6. **Given** every bucket lane has at least one resolved mushroom, **When** the row is complete, **Then** a basket bounce animation plays, the row clears, and an educational fact screen is shown.
 7. **Given** the fact screen is displayed, **When** the player presses spacebar, **Then** gameplay resumes.
+8. **Given** a falling mushroom, **When** the player clicks or taps a lane, **Then** the mushroom is routed into that lane and resolves immediately.
 
 ---
 
@@ -186,9 +187,12 @@ As a player, I want to see interesting educational facts about mushrooms when I 
 
 #### Controls & Accessibility
 
-- **FR-034**: The player MUST be able to pause the game by pressing ESC and resume by pressing ESC or Enter.
-- **FR-035**: The game MUST display control hints during gameplay (arrow keys, spacebar, ESC).
+- **FR-034**: The player MUST be able to pause the game by pressing ESC or activating a visible pause control, and resume by pressing ESC, Enter, or activating a visible resume control.
+- **FR-035**: The game MUST display control hints during gameplay for both keyboard and pointer input.
 - **FR-036**: The game MUST show the current score, basket count, and sorted progress (X/Y mushrooms) in the header area.
+- **FR-041**: Every game phase (menu, active play, pause, fact screen, level complete, and game over) MUST be operable with mouse input in addition to keyboard input.
+- **FR-042**: During active play, clicking or tapping a lane MUST move the falling mushroom into that lane and resolve the drop immediately.
+- **FR-043**: The page shell and canvas renderer MUST adapt to narrow/mobile viewports with a compact layout, touch-friendly hit targets, and a mobile-appropriate canvas preset.
 
 #### Deployment & Data
 
@@ -211,8 +215,25 @@ As a player, I want to see interesting educational facts about mushrooms when I 
 
 ## Future Features *(out of scope for current release)*
 
-- **iNaturalist Integration**: User provides their iNaturalist account and a time window; the game uses their actual observations as mushroom entries for a personalized learning experience.
-- **Mobile-Friendly Touch Controls**: Tap a lane to sort the falling mushroom directly into it, optimized for touch devices.
+- **Animation Polish**: Refine easing, transitions, and screen-to-screen motion beyond the current functional feedback system.
+
+## Implemented Extension: iNaturalist Integration
+
+- The page provides an iNaturalist import form where the player enters a username and start/end dates.
+- The browser fetches fungi observations directly from the public iNaturalist observations API using `user_login`, `taxon_id=47170`, `photos=true`, and the selected date window.
+- Only observations with usable photos that match species already supported by the built-in Sporefall catalog are playable. This keeps all 4 category systems accurate without introducing heuristic bucket assignments.
+- When multiple observations match the same supported species, the most recent playable observation is used for that species.
+- Imported runs reuse the existing Game Mode and Variety selections:
+  - Variety acts as a cap on the imported set.
+  - If the import yields fewer playable species than the selected Variety, gameplay scales down to the imported set size instead of failing.
+- Imported entries retain observation provenance metadata: observation URL, observer login, observed-on date, image URL, image license, and image attribution.
+
+## Implemented Extension: Mobile Readiness & Pointer Controls
+
+- The canvas switches between desktop and compact mobile viewport presets based on available window space.
+- Mouse and touch support mirror the full gameplay loop: option selection, lane drops, pause/resume, fact dismissal, level progression, and return-to-menu flows.
+- Active play supports direct lane click/tap sorting, while menu and overlay screens expose visible button targets for non-keyboard play.
+- The page shell keeps the iNaturalist form, canvas, and leaderboard readable on narrow screens with responsive stacking and larger tap targets.
 
 ## Success Criteria *(mandatory)*
 
@@ -232,8 +253,8 @@ As a player, I want to see interesting educational facts about mushrooms when I 
 - The 28-species catalog is pre-curated and hardcoded; runtime data loading is not required for v1.
 - All mushroom images are sourced from Wikimedia Commons or equivalent permissively-licensed sources.
 - The initial content scope is Central European mushroom species for curation tractability.
-- The game uses keyboard controls exclusively for v1; touch/mobile controls are a future enhancement.
-- The game runs at a fixed canvas resolution (960×540) suitable for desktop browsers.
+- The game supports keyboard, mouse, and touch input, with lane tap/click as the primary pointer interaction during play.
+- The game uses desktop and compact mobile canvas presets rather than a single desktop-only resolution.
 - Fall speed is fixed at 0.35 (fraction of height per second) and is not player-configurable in v1.
 - The retry queue (wrong placements re-entering) has no limit; incorrectly placed mushrooms keep returning until correctly sorted.
 - Educational facts are pattern-matched from mushroom combinations and hardcoded in the game logic.

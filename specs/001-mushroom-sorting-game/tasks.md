@@ -8,7 +8,7 @@
 
 **Organization**: Tasks are grouped by user story to preserve independent delivery and testing.
 
-**Status**: Core implementation complete. All 5 user stories delivered. 7 unit tests passing. Remaining work is asset sourcing and future features.
+**Status**: Core implementation complete. All 5 user stories delivered. Remaining work is asset sourcing, mobile touch controls, and visual polish.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -143,9 +143,9 @@
 
 ---
 
-## Phase 9: Remaining Work (Not Started)
+## Phase 9: Remaining Work
 
-**Purpose**: Asset sourcing, future features, and visual polish.
+**Purpose**: Asset sourcing and visual polish after the shipped iNaturalist and mobile/pointer extensions.
 
 ### Asset Sourcing
 
@@ -154,21 +154,21 @@
 
 ### Future Feature: iNaturalist Integration
 
-- [ ] T037 [P] Design iNaturalist observation import flow (user provides account + time window) in specs/001-mushroom-sorting-game/spec.md
-- [ ] T038 Implement iNaturalist API client for downloading user observations in data_pipeline/src/
-- [ ] T039 Map iNaturalist observations to game catalog format with image download in data_pipeline/src/export.rs
-- [ ] T040 Add UI for entering iNaturalist account and time window selection in crates/web_app/src/
+- [x] T037 [P] Design iNaturalist observation import flow (user provides account + time window) in specs/001-mushroom-sorting-game/spec.md
+- [x] T038 Implement iNaturalist API client for downloading user observations in data_pipeline/src/
+- [x] T039 Map iNaturalist observations to game catalog format with image download in data_pipeline/src/export.rs
+- [x] T040 Add UI for entering iNaturalist account and time window selection in crates/web_app/src/
 
-### Future Feature: Mobile Touch Controls
+### Mobile Readiness & Pointer Controls
 
-- [ ] T041 [P] Design tap-lane-to-sort interaction model for touch devices in specs/001-mushroom-sorting-game/spec.md
-- [ ] T042 Implement touch event handlers (tap lane to move + drop) in crates/web_app/src/input.rs
-- [ ] T043 Add responsive layout adjustments for mobile screen sizes in crates/web_app/src/render.rs and styles.css
+- [x] T041 [P] Design tap-lane-to-sort interaction model for touch devices in specs/001-mushroom-sorting-game/spec.md
+- [x] T042 Implement touch and mouse event handlers plus lane click/tap sorting in crates/web_app/src/input.rs and crates/web_app/src/lib.rs
+- [x] T043 Add responsive layout adjustments for mobile screen sizes in crates/web_app/src/render.rs and styles.css
 
 ### Visual Polish
 
 - [ ] T044 [P] Tune center-screen animation timing and easing curves in crates/web_app/src/render.rs
-- [ ] T045 [P] Implement responsive canvas sizing for different viewport dimensions in crates/web_app/src/render.rs
+- [x] T045 [P] Implement responsive canvas sizing for different viewport dimensions in crates/web_app/src/render.rs and crates/web_app/src/lib.rs
 - [ ] T046 Add smooth transitions between game phases (fade/slide) in crates/web_app/src/render.rs
 
 ---
@@ -185,20 +185,19 @@
 - **User Story 4 (Phase 6)**: ✅ Complete.
 - **User Story 5 (Phase 7)**: ✅ Complete.
 - **Infrastructure (Phase 8)**: ✅ Complete.
-- **Remaining (Phase 9)**: Independent tracks; asset sourcing has no code dependencies; future features require design first.
+- **Remaining (Phase 9)**: Asset sourcing and visual polish remain open.
 
 ### Remaining Work Independence
 
 - **Asset sourcing (T035–T036)**: Can proceed immediately; no code changes needed, only replacing placeholder images.
-- **iNaturalist integration (T037–T040)**: Requires design spec first (T037), then sequential implementation.
-- **Mobile touch controls (T041–T043)**: Requires design spec first (T041), then input + render changes.
+- **iNaturalist integration (T037–T040)**: Complete.
+- **Mobile readiness (T041–T043, T045)**: Complete.
 - **Visual polish (T044–T046)**: All parallelizable; no dependencies on other remaining work.
 
 ### Parallel Opportunities (Remaining)
 
 - T035 and T036 can run in parallel (different files).
-- T037, T041, T044, T045 can all run in parallel (independent design/render tracks).
-- T044, T045, T046 are all parallelizable within visual polish.
+- T044 and T046 can run in parallel (independent render polish tracks).
 
 ---
 
@@ -214,7 +213,7 @@
 | User Story 5 – Educational Facts | T028–T030 | ✅ Done (3 tasks) |
 | Infrastructure & Assets | T031–T034 | ✅ Done (4 tasks) |
 | Asset Sourcing | T035–T036 | ⬜ Not started (2 tasks) |
-| iNaturalist Integration | T037–T040 | ⬜ Not started (4 tasks) |
-| Mobile Touch Controls | T041–T043 | ⬜ Not started (3 tasks) |
-| Visual Polish | T044–T046 | ⬜ Not started (3 tasks) |
-| **Total** | **T001–T046** | **34 done, 12 remaining** |
+| iNaturalist Integration | T037–T040 | ✅ Done (4 tasks) |
+| Mobile Readiness & Pointer Controls | T041–T043, T045 | ✅ Done (4 tasks) |
+| Visual Polish | T044, T046 | ⬜ Not started (2 tasks) |
+| **Total** | **T001–T046** | **42 done, 4 remaining** |

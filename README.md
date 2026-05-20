@@ -9,8 +9,8 @@ At the start of a run, the player chooses one bucket set (Ecological Role, Cap C
 This project is a Rust workspace. The game is implemented in Rust and compiled to WebAssembly for the browser.
 
 - `crates/game_core` (Rust library): pure game domain and rules.
-- `crates/web_app` (Rust + wasm-bindgen/web-sys): browser runtime, input handling, animation loop, and canvas rendering.
-- `index.html` + `styles.css` (static shell): page container and styling around the canvas.
+- `crates/web_app` (Rust + wasm-bindgen/web-sys): browser runtime, keyboard/pointer input handling, animation loop, and canvas rendering.
+- `index.html` + `styles.css` (static shell): page container, responsive shell layout, iNaturalist controls, leaderboard UI, and styling around the canvas.
 - `Trunk.toml`: Trunk build/serve configuration for WASM web output.
 
 ## What Runs Where
@@ -35,13 +35,13 @@ This crate is framework-free and browser-free, so it can be tested with normal R
 
 - `src/lib.rs`
   - WASM entry point (`#[wasm_bindgen(start)]`), obtains canvas context from the DOM,
-  - registers keyboard input,
+  - registers keyboard and pointer input,
   - runs the `requestAnimationFrame` loop and calls update/render each frame.
 - `src/app.rs`
   - App orchestration (`AppState`), menu vs gameplay phases,
   - fall progression timer,
   - spawning via catalog,
-  - action routing (menu navigation vs in-game movement/drop).
+  - action routing (menu navigation, pointer hit targets, in-game movement/drop).
 - `src/catalog.rs`
   - Mushroom dataset and category modes,
   - computes lane target based on selected category set.
@@ -55,6 +55,7 @@ This crate is framework-free and browser-free, so it can be tested with normal R
   - category labels,
   - score/feedback,
   - basket count,
+  - responsive desktop/mobile layouts,
   - simple per-species mushroom sprite colors.
 - `src/settings.rs`
   - Runtime defaults (lane count, spawn lane, scoring values).
@@ -66,7 +67,7 @@ No JavaScript gameplay code is used. JS interop is limited to browser APIs expos
 Each frame in the browser follows this sequence:
 
 1. Browser calls `requestAnimationFrame` callback (in `web_app/src/lib.rs`).
-2. `AppState::tick(dt)` advances fall progress (in `web_app/src/app.rs`).
+2. `AppState::tick(dt)` advances fall progress and phase animations (in `web_app/src/app.rs`).
 3. If a mushroom reaches the bottom, app triggers `GameState::hard_drop()` (in `game_core/src/rules.rs`).
 4. Domain logic updates lanes, basket, and score.
 5. Renderer redraws the full canvas from current state (in `web_app/src/render.rs`).
@@ -81,6 +82,7 @@ Prerequisites:
 Commands:
 
 ```powershell
+python leaderboard_service.py
 cargo test -p game_core
 trunk serve --port 8080
 ```
@@ -88,3 +90,8 @@ trunk serve --port 8080
 Then open:
 
 - `http://127.0.0.1:8080/`
+
+The leaderboard service persists scores in `runtime-data\leaderboard.sqlite3` and serves the local API at
+`http://127.0.0.1:8787/api/leaderboard`.
+
+The game can be played with keyboard controls or by clicking/tapping the in-canvas buttons and lane targets.
