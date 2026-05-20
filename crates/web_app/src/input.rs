@@ -23,3 +23,20 @@ pub fn map_key_to_action(key: &str) -> Option<InputAction> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{map_key_to_action, InputAction};
+
+    #[test]
+    fn maps_enter_to_confirm() {
+        assert_eq!(map_key_to_action("Enter"), Some(InputAction::Confirm));
+    }
+
+    #[test]
+    fn maps_space_variants_to_hard_drop() {
+        assert_eq!(map_key_to_action(" "), Some(InputAction::HardDrop));
+        assert_eq!(map_key_to_action("Space"), Some(InputAction::HardDrop));
+        assert_eq!(map_key_to_action("Spacebar"), Some(InputAction::HardDrop));
+    }
+}

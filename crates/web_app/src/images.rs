@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+
 use web_sys::HtmlImageElement;
 
 /// Preloads and caches mushroom images by image_key.
@@ -13,7 +14,7 @@ impl ImageCache {
         }
     }
 
-    /// Preload all mushroom images. Images load asynchronously;
+    /// Preload all bundled mushroom images. Images load asynchronously;
     /// get() will return the element once the browser has fetched it.
     pub fn preload_all(&mut self) {
         let keys = [
@@ -48,15 +49,28 @@ impl ImageCache {
         ];
 
         for key in keys {
-            let img = HtmlImageElement::new().expect("create img element");
-            let src = format!("{}.jpg", key);
-            img.set_src(&src);
-            self.images.insert(key.to_owned(), img);
+            self.preload_with_src(key, &format!("{}.jpg", key));
         }
+    }
+
+    pub fn preload_dynamic(&mut self, key: &str, src: &str) {
+        if self.images.contains_key(key) {
+            return;
+        }
+        self.preload_with_src(key, src);
+    }
+
+    fn preload_with_src(&mut self, key: &str, src: &str) {
+        let img = HtmlImageElement::new().expect("create img element");
+        img.set_cross_origin(Some("anonymous"));
+        img.set_src(src);
+        self.images.insert(key.to_owned(), img);
     }
 
     /// Get a loaded image by key. Returns None if not yet loaded or key unknown.
     pub fn get(&self, key: &str) -> Option<&HtmlImageElement> {
-        self.images.get(key).filter(|img| img.complete() && img.natural_width() > 0)
+        self.images
+            .get(key)
+            .filter(|img| img.complete() && img.natural_width() > 0)
     }
 }
