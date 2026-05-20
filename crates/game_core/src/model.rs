@@ -3,6 +3,7 @@ pub struct FallingMushroom {
     pub id: String,
     pub display_name: String,
     pub target_lane: usize,
+    pub image_key: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +19,7 @@ pub struct PlacementFeedback {
     pub row_cleared: bool,
     pub awarded_points: u32,
     pub placed_lane: usize,
+    pub mushroom_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,5 +28,12 @@ pub enum GameError {
     InvalidTargetLane,
     ActiveMushroomPresent,
     NoActiveMushroom,
-    LaneOccupied,
+}
+
+/// Represents one category system the player can choose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BucketSet {
+    pub id: String,
+    pub name: String,
+    pub labels: Vec<String>,
 }

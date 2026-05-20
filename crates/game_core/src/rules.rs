@@ -5,7 +5,10 @@ pub struct GameState {
     config: GameConfig,
     active_mushroom: Option<FallingMushroom>,
     active_lane: usize,
-    settled_row: Vec<Option<FallingMushroom>>,
+    /// Each lane holds a stack of settled mushrooms (stacking allowed).
+    lanes: Vec<Vec<FallingMushroom>>,
+    /// Correctly classified mushrooms collected as rewards.
+    basket: Vec<FallingMushroom>,
     score: u32,
 }
 
@@ -19,7 +22,8 @@ impl GameState {
             config,
             active_mushroom: None,
             active_lane: 0,
-            settled_row: vec![None; config.lane_count],
+            lanes: vec![Vec::new(); config.lane_count],
+            basket: Vec::new(),
             score: 0,
         })
     }
@@ -40,8 +44,14 @@ impl GameState {
         self.active_mushroom.as_ref()
     }
 
-    pub fn settled_row(&self) -> &[Option<FallingMushroom>] {
-        &self.settled_row
+    /// Returns the stack of mushrooms in each lane.
+    pub fn lanes(&self) -> &[Vec<FallingMushroom>] {
+        &self.lanes
+    }
+
+    /// Returns the collection basket of correctly sorted mushrooms.
+    pub fn basket(&self) -> &[FallingMushroom] {
+        &self.basket
     }
 
     pub fn spawn(&mut self, mushroom: FallingMushroom, starting_lane: usize) -> Result<(), GameError> {
@@ -84,28 +94,30 @@ impl GameState {
     pub fn hard_drop(&mut self) -> Result<PlacementFeedback, GameError> {
         let mushroom = self.active_mushroom.take().ok_or(GameError::NoActiveMushroom)?;
 
-        if self.settled_row[self.active_lane].is_some() {
-            self.active_mushroom = Some(mushroom);
-            return Err(GameError::LaneOccupied);
-        }
-
         let correct_lane = mushroom.target_lane == self.active_lane;
         let placed_lane = self.active_lane;
-        self.settled_row[placed_lane] = Some(mushroom);
+        let mushroom_name = mushroom.display_name.clone();
 
+        // Correct → collect in basket, award points
         let mut awarded_points = if correct_lane {
             self.score += self.config.points_per_correct;
+            self.basket.push(mushroom.clone());
             self.config.points_per_correct
         } else {
             0
         };
 
-        let row_cleared = self.settled_row.iter().all(Option::is_some);
+        // Place in lane regardless
+        self.lanes[placed_lane].push(mushroom);
+
+        // Row clears when every lane has at least one entry
+        let row_cleared = self.lanes.iter().all(|lane| !lane.is_empty());
         if row_cleared {
             self.score += self.config.points_per_clear;
             awarded_points += self.config.points_per_clear;
-            for slot in &mut self.settled_row {
-                *slot = None;
+            // Remove one mushroom from each lane (bottom of stack)
+            for lane in &mut self.lanes {
+                lane.remove(0);
             }
         }
 
@@ -114,6 +126,7 @@ impl GameState {
             row_cleared,
             awarded_points,
             placed_lane,
+            mushroom_name,
         })
     }
 }
