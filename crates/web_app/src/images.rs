@@ -29,6 +29,22 @@ impl ImageCache {
             "morel",
             "death-cap",
             "reishi",
+            "enoki",
+            "lions-mane",
+            "matsutake",
+            "maitake",
+            "destroying-angel",
+            "porcini",
+            "chicken-of-woods",
+            "shaggy-ink-cap",
+            "penny-bun",
+            "giant-puffball",
+            "jelly-ear",
+            "birch-polypore",
+            "false-morel",
+            "wood-ear",
+            "agarikon",
+            "jack-o-lantern",
         ];
 
         for key in keys {
