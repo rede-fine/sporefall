@@ -106,7 +106,11 @@ pub fn start() -> Result<(), JsValue> {
     )
     .ok();
 
-    start_game_loop(context, app, image_cache, leaderboard, &window);
+    let inat_panel = document
+        .get_element_by_id("inat-panel")
+        .and_then(|el| el.dyn_into::<HtmlElement>().ok());
+
+    start_game_loop(context, app, image_cache, leaderboard, inat_panel, &window);
 
     Ok(())
 }
@@ -116,6 +120,7 @@ fn start_game_loop(
     app: Rc<RefCell<AppState>>,
     image_cache: Rc<RefCell<ImageCache>>,
     leaderboard: Option<Rc<RefCell<leaderboard::LeaderboardController>>>,
+    inat_panel: Option<HtmlElement>,
     window: &web_sys::Window,
 ) {
     let f: Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>> = Rc::new(RefCell::new(None));
@@ -139,6 +144,16 @@ fn start_game_loop(
 
         if let Some(ref lb) = leaderboard {
             leaderboard::LeaderboardController::tick(lb);
+        }
+
+        // Show iNat panel only on menu screen
+        if let Some(ref panel) = inat_panel {
+            let is_menu = matches!(app.borrow().phase, app::GamePhase::Menu);
+            if is_menu {
+                let _ = panel.remove_attribute("hidden");
+            } else {
+                let _ = panel.set_attribute("hidden", "");
+            }
         }
 
         draw(&context, &app.borrow(), &image_cache.borrow());
@@ -320,9 +335,18 @@ fn apply_viewport(
         .and_then(|value| value.as_f64())
         .unwrap_or(768.0);
     let viewport = ui::Viewport::choose(inner_width, inner_height);
-    canvas.set_width(viewport.width as u32);
-    canvas.set_height(viewport.height as u32);
+    let dpr = window.device_pixel_ratio().max(1.0);
+
+    // Set CSS display size
+    let style = canvas.unchecked_ref::<HtmlElement>().style();
+    let _ = style.set_property("width", &format!("{}px", viewport.width));
+    let _ = style.set_property("height", &format!("{}px", viewport.height));
+    // Set backing store resolution for crisp rendering
+    canvas.set_width((viewport.width * dpr) as u32);
+    canvas.set_height((viewport.height * dpr) as u32);
+
     app.borrow_mut().set_viewport(viewport);
+    app.borrow_mut().set_dpr(dpr);
 }
 
 fn pointer_position(canvas: &HtmlCanvasElement, event: &PointerEvent) -> Option<(f64, f64)> {
@@ -334,5 +358,9 @@ fn pointer_position(canvas: &HtmlCanvasElement, event: &PointerEvent) -> Option<
     let x = (f64::from(event.client_x()) - rect.left()) * f64::from(canvas.width()) / rect.width();
     let y =
         (f64::from(event.client_y()) - rect.top()) * f64::from(canvas.height()) / rect.height();
+    // Canvas backing store is scaled by dpr; convert back to logical coordinates
+    let dpr = web_sys::window().unwrap().device_pixel_ratio();
+    let x = x / dpr;
+    let y = y / dpr;
     Some((x, y))
 }

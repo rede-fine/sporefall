@@ -7,6 +7,8 @@ use crate::ui::{self, Rect};
 
 pub fn draw(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCache) {
     let viewport = app.viewport;
+    let dpr = app.dpr;
+    ctx.set_transform(dpr, 0.0, 0.0, dpr, 0.0, 0.0).unwrap_or(());
     ctx.set_fill_style_str("#1a2218");
     ctx.fill_rect(0.0, 0.0, viewport.width, viewport.height);
 
@@ -53,23 +55,6 @@ fn draw_menu(ctx: &CanvasRenderingContext2d, app: &AppState) {
         "Sort mushroom species into the right buckets.",
         title_x,
         title_y + if viewport.compact { 34.0 } else { 30.0 },
-    );
-
-    let focus_label = if app.menu_column == 0 {
-        "Keyboard focus: Game Mode"
-    } else {
-        "Keyboard focus: Variety"
-    };
-    ctx.set_fill_style_str("#d7c486");
-    ctx.set_font(if viewport.compact {
-        "bold 16px Georgia"
-    } else {
-        "bold 13px Georgia"
-    });
-    let _ = ctx.fill_text(
-        focus_label,
-        title_x,
-        title_y + if viewport.compact { 64.0 } else { 52.0 },
     );
 
     ctx.set_fill_style_str("#f8f3e8");
@@ -241,30 +226,30 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
     ctx.set_font(if viewport.compact {
         "bold 28px Georgia"
     } else {
-        "bold 18px Georgia"
+        "bold 16px Georgia"
     });
     let _ = ctx.fill_text(
         &format!("Level {} - {}", app.current_level + 1, app.category_mode.display_name()),
         layout.fall_zone.x,
-        if viewport.compact { 40.0 } else { 28.0 },
+        if viewport.compact { 40.0 } else { 22.0 },
     );
 
-    let stats_y = if viewport.compact { 70.0 } else { 48.0 };
+    let stats_y = if viewport.compact { 70.0 } else { 42.0 };
     ctx.set_fill_style_str("#f5d67a");
     ctx.set_font(if viewport.compact {
         "bold 18px Georgia"
     } else {
-        "bold 14px Georgia"
+        "bold 12px Georgia"
     });
     let _ = ctx.fill_text(&format!("Score {}", app.game.score()), layout.fall_zone.x, stats_y);
     let _ = ctx.fill_text(
         &format!("Baskets {}", app.total_baskets),
-        layout.fall_zone.x + if viewport.compact { 150.0 } else { 118.0 },
+        layout.fall_zone.x + if viewport.compact { 150.0 } else { 100.0 },
         stats_y,
     );
     let _ = ctx.fill_text(
         &format!("Sorted {}/{}", app.sorted_this_level.len(), app.active_catalog_len()),
-        layout.fall_zone.x + if viewport.compact { 320.0 } else { 230.0 },
+        layout.fall_zone.x + if viewport.compact { 320.0 } else { 200.0 },
         stats_y,
     );
 
@@ -272,9 +257,9 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
     ctx.set_font(if viewport.compact {
         "16px Georgia"
     } else {
-        "12px Georgia"
+        "11px Georgia"
     });
-    let badge_y = if viewport.compact { 96.0 } else { 64.0 };
+    let badge_y = if viewport.compact { 96.0 } else { 58.0 };
     let _ = ctx.fill_text(
         &format!(
             "[{} / {} / {}]",
@@ -295,8 +280,8 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
         });
         let _ = ctx.fill_text(
             &summary,
-            layout.fall_zone.x + if viewport.compact { 0.0 } else { 132.0 },
-            if viewport.compact { 92.0 } else { 28.0 },
+            layout.fall_zone.x + if viewport.compact { 0.0 } else { 180.0 },
+            if viewport.compact { 92.0 } else { 58.0 },
         );
     }
 
@@ -305,17 +290,17 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
         ctx.set_font(if viewport.compact {
             "16px Georgia"
         } else {
-            "13px Georgia"
+            "12px Georgia"
         });
         let message_width = if viewport.compact { 54 } else { 46 };
-        let mut y = badge_y + if viewport.compact { 24.0 } else { -8.0 };
+        let mut y = if viewport.compact { badge_y + 24.0 } else { 22.0 };
         for line in wrap_text(message, message_width).into_iter().take(if viewport.compact { 2 } else { 1 }) {
             let _ = ctx.fill_text(
                 &line,
                 if viewport.compact {
                     layout.fall_zone.x
                 } else {
-                    layout.fall_zone.x + 160.0
+                    layout.fall_zone.x + 300.0
                 },
                 y,
             );
@@ -390,7 +375,7 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
         if let Some(bucket) = layout.bucket_rects.get(active_lane) {
             let fall_y = layout.fall_zone.y + app.fall_progress * layout.fall_zone.height;
             let center_x = bucket.center_x();
-            let img_size = if viewport.compact { 74.0 } else { 56.0 };
+            let img_size = (bucket.width * 0.75).min(if viewport.compact { 120.0 } else { 90.0 });
 
             draw_mushroom_item(
                 ctx,

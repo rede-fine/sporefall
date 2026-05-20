@@ -41,6 +41,7 @@ pub struct LeaderboardController {
     modal_status_el: Element,
     input_el: HtmlInputElement,
     has_loaded: bool,
+    service_available: bool,
     fetch_in_flight: bool,
     submit_in_flight: bool,
     prompt_open: bool,
@@ -70,6 +71,7 @@ impl LeaderboardController {
             modal_status_el: get_element(&document, "leaderboard-modal-status")?,
             input_el,
             has_loaded: false,
+            service_available: false,
             fetch_in_flight: false,
             submit_in_flight: false,
             prompt_open: false,
@@ -77,12 +79,6 @@ impl LeaderboardController {
             evaluated_score: None,
             entries: Vec::new(),
         }));
-
-        {
-            let controller_ref = controller.borrow();
-            controller_ref.render_entries();
-            controller_ref.set_status("Loading the persistent Top 10 leaderboard...");
-        }
 
         attach_click_handler(&document, "leaderboard-submit", {
             let controller = Rc::clone(&controller);
@@ -116,7 +112,6 @@ impl LeaderboardController {
             input_handler.forget();
         }
 
-        Self::refresh(&controller);
         Ok(controller)
     }
 
@@ -139,11 +134,7 @@ impl LeaderboardController {
                 if controller_ref.prompt_open {
                     controller_ref.hide_prompt();
                 }
-                if !controller_ref.has_loaded && !controller_ref.fetch_in_flight {
-                    Some(TickAction::Refresh)
-                } else {
-                    None
-                }
+                None
             } else if !controller_ref.has_loaded {
                 if !controller_ref.fetch_in_flight {
                     Some(TickAction::Refresh)
@@ -160,7 +151,6 @@ impl LeaderboardController {
                 Some(TickAction::OpenPrompt(score))
             } else {
                 controller_ref.evaluated_score = Some(score);
-                controller_ref.set_status("That run did not reach the current Top 10.");
                 None
             }
         };
@@ -215,6 +205,7 @@ impl LeaderboardController {
         let mut controller_ref = controller.borrow_mut();
         controller_ref.fetch_in_flight = false;
         controller_ref.has_loaded = true;
+        controller_ref.service_available = true;
         controller_ref.entries = entries;
         controller_ref.render_entries();
 
@@ -228,15 +219,15 @@ impl LeaderboardController {
     fn handle_fetch_error(controller: &Rc<RefCell<Self>>, message: &str) {
         let mut controller_ref = controller.borrow_mut();
         controller_ref.fetch_in_flight = false;
+        // Treat as "loaded" to stop retrying — service is unavailable
+        controller_ref.has_loaded = true;
         controller_ref.set_status(message);
-        if !controller_ref.has_loaded {
-            controller_ref.list_el.set_inner_html(
-                "<li class=\"leaderboard-empty\">Leaderboard unavailable. Start <code>python leaderboard_service.py</code> to persist scores.</li>",
-            );
-        }
     }
 
     fn qualifies(&self, score: u32) -> bool {
+        if !self.service_available || score == 0 {
+            return false;
+        }
         self.entries.len() < MAX_ENTRIES
             || self
                 .entries

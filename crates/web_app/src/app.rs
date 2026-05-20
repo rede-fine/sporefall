@@ -121,6 +121,7 @@ pub struct AppState {
     pub import_summary: Option<ImportSummary>,
     using_imported_catalog: bool,
     pub viewport: Viewport,
+    pub dpr: f64,
 }
 
 impl AppState {
@@ -157,6 +158,7 @@ impl AppState {
             import_summary: None,
             using_imported_catalog: false,
             viewport: Viewport::default(),
+            dpr: 1.0,
         }
     }
 
@@ -170,6 +172,10 @@ impl AppState {
 
     pub fn set_viewport(&mut self, viewport: Viewport) {
         self.viewport = viewport;
+    }
+
+    pub fn set_dpr(&mut self, dpr: f64) {
+        self.dpr = dpr;
     }
 
     pub fn active_source_label(&self) -> &'static str {
