@@ -89,6 +89,11 @@ As a returning player, I want levels to vary the active bucket sets and challeng
 - **FR-018**: The system MUST retain provenance for each curated mushroom entry so taxonomy, ecological labels, seasonal labels, and image reuse can be audited.
 - **FR-019**: The system MUST only ship public-facing images whose reuse terms are compatible with a publicly hosted educational browser game.
 - **FR-020**: The system MUST support a curated regional content scope for the initial release so the dataset remains reviewable and the bucket combinations remain reliable.
+- **FR-021**: The system MUST animate the falling mushroom downward at a configurable speed to create time pressure for the sorting decision.
+- **FR-022**: The system MUST collect correctly classified mushrooms in a visible reward basket rather than simply removing them from the play area.
+- **FR-023**: The system MUST present bucket categories as coherent, mutually exclusive sets (e.g., all ecology labels OR all color labels in one session) that the player selects before starting.
+- **FR-024**: The system MUST allow multiple mushrooms to land in the same bucket lane; stacking is permitted and the row clears only when every lane has at least one entry.
+- **FR-025**: The system MUST display a representative image of each falling mushroom alongside or instead of its text clue, depending on the player's clue mode selection.
 
 ### Key Entities *(include if feature involves data)*
 
