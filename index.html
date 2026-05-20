@@ -38,8 +38,71 @@
   <body>
     <main class="app-shell">
       <section class="playfield-card">
+        <section class="inat-panel" aria-label="iNaturalist import">
+          <div class="inat-panel__copy">
+            <p class="inat-panel__eyebrow">Personalized mode</p>
+            <h2>Import your iNaturalist fungi</h2>
+            <p class="inat-panel__lede">
+              Keep using the keyboard menu inside the canvas for Game Mode and Variety.
+              This form swaps the curated catalog for your own supported mushroom observations.
+            </p>
+          </div>
+          <div class="inat-panel__controls">
+            <label class="inat-field">
+              <span>Username</span>
+              <input id="inat-user" type="text" placeholder="katleigh" autocomplete="off" />
+            </label>
+            <label class="inat-field">
+              <span>From</span>
+              <input id="inat-start-date" type="date" />
+            </label>
+            <label class="inat-field">
+              <span>To</span>
+              <input id="inat-end-date" type="date" />
+            </label>
+            <button id="inat-import-button" class="inat-button" type="button">
+              Import &amp; Play
+            </button>
+          </div>
+          <p id="inat-status" class="inat-status inat-status--idle" role="status">
+            Pick a username and date range, then import fungi observations.
+          </p>
+        </section>
         <canvas id="game-canvas" width="960" height="540"></canvas>
       </section>
+      <aside class="leaderboard-card" aria-labelledby="leaderboard-heading">
+        <p class="leaderboard-card__eyebrow">Persistent local scores</p>
+        <h2 id="leaderboard-heading">Top 10 leaderboard</h2>
+        <p id="leaderboard-status" class="leaderboard-status">Loading the persistent Top 10 leaderboard...</p>
+        <ol id="leaderboard-list" class="leaderboard-list">
+          <li class="leaderboard-empty">No leaderboard entries yet.</li>
+        </ol>
+        <p class="leaderboard-footnote">
+          Run <code>python leaderboard_service.py</code> alongside <code>trunk serve --port 8080</code> to keep
+          scores stored in SQLite.
+        </p>
+      </aside>
     </main>
+
+    <section id="leaderboard-modal" class="leaderboard-modal" hidden aria-label="Leaderboard submission prompt">
+      <div class="leaderboard-modal__card">
+        <p class="leaderboard-card__eyebrow">Leaderboard entry</p>
+        <h2>Top 10 run</h2>
+        <p id="leaderboard-modal-score" class="leaderboard-modal__copy">
+          Save your score to the local leaderboard.
+        </p>
+        <label class="inat-field leaderboard-modal__field" for="leaderboard-name-input">
+          <span>Player name</span>
+          <input id="leaderboard-name-input" type="text" maxlength="24" placeholder="Forest Scout" autocomplete="nickname" />
+        </label>
+        <p id="leaderboard-modal-status" class="leaderboard-modal__status">
+          Player names are capped at 24 characters.
+        </p>
+        <div class="leaderboard-modal__actions">
+          <button id="leaderboard-submit" class="inat-button" type="button">Save score</button>
+          <button id="leaderboard-cancel" class="leaderboard-cancel" type="button">Skip</button>
+        </div>
+      </div>
+    </section>
   </body>
 </html>

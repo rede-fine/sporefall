@@ -23,12 +23,17 @@ body {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 38%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-accent) 100%);
+  overflow-x: hidden;
 }
 
 .app-shell {
-  width: min(1120px, calc(100vw - 32px));
+  width: min(1400px, calc(100vw - 24px));
   margin: 0 auto;
-  padding: 32px 0 40px;
+  padding: clamp(12px, 3vw, 28px) 0 clamp(20px, 4vw, 36px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
 }
 
 .hero {
@@ -57,12 +62,285 @@ body {
 }
 
 .playfield-card {
-  padding: 18px;
+  padding: clamp(10px, 2vw, 18px);
   border: 1px solid var(--border);
   border-radius: 28px;
   background: var(--surface);
   box-shadow: var(--shadow);
   backdrop-filter: blur(12px);
+}
+
+.inat-panel {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: clamp(14px, 2vw, 18px);
+  border-radius: 20px;
+  background: rgba(31, 38, 31, 0.07);
+  border: 1px solid rgba(31, 38, 31, 0.1);
+}
+
+.inat-panel__copy h2 {
+  margin: 0 0 6px;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+}
+
+.inat-panel__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.inat-panel__lede {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.inat-panel__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.inat-field {
+  display: grid;
+  gap: 6px;
+}
+
+.inat-field span {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inat-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(31, 38, 31, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  color: var(--ink);
+}
+
+.inat-field input:focus {
+  outline: 2px solid rgba(141, 75, 50, 0.25);
+  border-color: var(--accent);
+}
+
+.inat-button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3f5f42 0%, #2d4830 100%);
+  color: #f8f3e8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inat-button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.inat-status {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.4;
+}
+
+.inat-status--idle {
+  color: var(--muted);
+}
+
+.inat-status--loading {
+  color: #6d5c2c;
+}
+
+.inat-status--success {
+  color: #2f6a37;
+}
+
+.inat-status--error {
+  color: #8b2d2d;
+}
+
+.leaderboard-card {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 241, 0.92);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 16px;
+}
+
+.leaderboard-card__eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.leaderboard-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.8rem;
+  line-height: 1.05;
+}
+
+.leaderboard-status,
+.leaderboard-footnote,
+.leaderboard-modal__copy,
+.leaderboard-modal__status {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.leaderboard-status {
+  margin: 0 0 14px;
+}
+
+.leaderboard-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.leaderboard-item,
+.leaderboard-empty {
+  border: 1px solid rgba(31, 38, 31, 0.1);
+  border-radius: 16px;
+  background: rgba(31, 38, 31, 0.05);
+}
+
+.leaderboard-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.leaderboard-item--top {
+  background: linear-gradient(180deg, rgba(245, 214, 122, 0.24), rgba(31, 38, 31, 0.06));
+  border-color: rgba(141, 75, 50, 0.18);
+}
+
+.leaderboard-rank {
+  min-width: 2.9rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.leaderboard-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.leaderboard-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.leaderboard-date {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.leaderboard-score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.leaderboard-empty {
+  padding: 14px;
+}
+
+.leaderboard-footnote {
+  margin: 14px 0 0;
+  font-size: 0.92rem;
+}
+
+code {
+  padding: 0.12rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(31, 38, 31, 0.08);
+  font-size: 0.95em;
+}
+
+.leaderboard-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(19, 24, 19, 0.64);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+
+.leaderboard-modal[hidden] {
+  display: none;
+}
+
+.leaderboard-modal__card {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(31, 38, 31, 0.12);
+  background: rgba(255, 251, 244, 0.98);
+  box-shadow: 0 24px 60px rgba(31, 38, 31, 0.24);
+}
+
+.leaderboard-modal__card h2 {
+  margin: 0 0 10px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.leaderboard-modal__copy {
+  margin: 0 0 16px;
+}
+
+.leaderboard-modal__field {
+  margin-bottom: 10px;
+}
+
+.leaderboard-modal__status {
+  min-height: 1.5em;
+  margin: 0 0 16px;
+}
+
+.leaderboard-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.leaderboard-cancel {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(31, 38, 31, 0.08);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
 }
 
 .hud {
@@ -101,20 +379,74 @@ body {
   height: auto;
   border-radius: 18px;
   background: linear-gradient(180deg, #283128 0%, #182018 100%);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .app-shell {
-    width: min(100vw - 20px, 1120px);
-    padding-top: 20px;
-  }
-
-  .hud {
+    width: min(100vw - 14px, 1120px);
     grid-template-columns: 1fr;
   }
 
   .playfield-card {
     padding: 12px;
+    border-radius: 22px;
+  }
+
+  .inat-panel__controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .inat-button {
+    grid-column: 1 / -1;
+  }
+
+  .leaderboard-card {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-shell {
+    width: min(100vw - 10px, 720px);
+    padding-top: 8px;
+    padding-bottom: 14px;
+  }
+
+  .playfield-card {
+    padding: 8px;
     border-radius: 18px;
+  }
+
+  .inat-panel {
+    gap: 12px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .inat-panel__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .inat-button {
+    width: 100%;
+  }
+
+  #game-canvas {
+    border-radius: 14px;
+  }
+
+  .leaderboard-modal__actions {
+    flex-direction: column;
+  }
+
+  .leaderboard-cancel {
+    width: 100%;
   }
 }
