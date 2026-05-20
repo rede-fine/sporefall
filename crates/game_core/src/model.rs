@@ -2,6 +2,7 @@
 pub struct FallingMushroom {
     pub id: String,
     pub display_name: String,
+    pub latin_name: String,
     pub target_lane: usize,
     pub image_key: String,
 }
@@ -20,6 +21,7 @@ pub struct PlacementFeedback {
     pub awarded_points: u32,
     pub placed_lane: usize,
     pub mushroom_name: String,
+    pub cleared_mushrooms: Vec<FallingMushroom>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
