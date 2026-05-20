@@ -73,7 +73,10 @@ crates/
 │       ├── app.rs           # AppState, GamePhase enum, update logic, level progression
 │       ├── catalog.rs       # 28 mushroom species, Variety enum, CategoryMode, pick_mushroom
 │       ├── render.rs        # Full canvas renderer (menu, playing, animations, level complete, game over)
-│       ├── input.rs         # Keyboard event → InputAction mapping
+│       ├── input.rs         # Keyboard + pointer event → InputAction mapping
+│       ├── inat.rs          # iNaturalist API integration (gloo-net async)
+│       ├── leaderboard.rs   # Async leaderboard client (gloo-net + spawn_local)
+│       ├── ui.rs            # Responsive viewport/layout system (desktop + compact mobile)
 │       ├── images.rs        # Image preloading for all 28 species
 │       ├── facts.rs         # Educational facts for basket events
 │       └── settings.rs      # PlayerSettings (lane_count, points config)

@@ -165,6 +165,13 @@
 - [x] T042 Implement touch and mouse event handlers plus lane click/tap sorting in crates/web_app/src/input.rs and crates/web_app/src/lib.rs
 - [x] T043 Add responsive layout adjustments for mobile screen sizes in crates/web_app/src/render.rs and styles.css
 
+### Leaderboard
+
+- [x] T047 Implement SQLite leaderboard service with REST API in leaderboard_service.py
+- [x] T048 Implement async leaderboard client (gloo-net + spawn_local) in crates/web_app/src/leaderboard.rs
+- [x] T049 Add leaderboard sidebar and qualifying-score modal to HTML shell in index.html and styles.css
+- [x] T050 Wire leaderboard bootstrap and tick into game loop in crates/web_app/src/lib.rs
+
 ### Visual Polish
 
 - [ ] T044 [P] Tune center-screen animation timing and easing curves in crates/web_app/src/render.rs
