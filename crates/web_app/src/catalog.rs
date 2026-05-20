@@ -29,7 +29,7 @@ impl CategoryMode {
         }
     }
 
-    /// Level ordering: Color (1) → Function (2) → Ecology (3) → Season (4)
+    /// Level ordering: Color (1) -> Function (2) -> Ecology (3) -> Season (4)
     pub fn for_level(level: usize) -> Self {
         match level {
             0 => Self::Color,
@@ -63,9 +63,9 @@ impl Variety {
 
     pub fn description(&self) -> &'static str {
         match self {
-            Self::Small => "12 species — learn the basics",
-            Self::Medium => "20 species — more variety",
-            Self::Large => "28 species — full challenge",
+            Self::Small => "12 species - learn the basics",
+            Self::Medium => "20 species - more variety",
+            Self::Large => "28 species - full challenge",
         }
     }
 
@@ -78,7 +78,65 @@ impl Variety {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogProvenance {
+    pub source_name: String,
+    pub source_url: Option<String>,
+    pub image_url: Option<String>,
+    pub image_license: Option<String>,
+    pub image_attribution: Option<String>,
+    pub observed_on: Option<String>,
+    pub observer_login: Option<String>,
+}
+
+impl CatalogProvenance {
+    pub fn built_in() -> Self {
+        Self {
+            source_name: "Curated catalog".to_owned(),
+            source_url: None,
+            image_url: None,
+            image_license: None,
+            image_attribution: None,
+            observed_on: None,
+            observer_login: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeCatalogEntry {
+    pub id: String,
+    pub display_name: String,
+    pub latin_name: String,
+    pub image_key: String,
+    /// Target lane index per category mode: [ecology, color, season, function]
+    pub targets: [usize; 4],
+    pub provenance: CatalogProvenance,
+}
+
+impl RuntimeCatalogEntry {
+    pub fn target_for(&self, mode: CategoryMode) -> usize {
+        match mode {
+            CategoryMode::Ecology => self.targets[0],
+            CategoryMode::Color => self.targets[1],
+            CategoryMode::Season => self.targets[2],
+            CategoryMode::Function => self.targets[3],
+        }
+    }
+
+    pub fn to_falling_mushroom(&self, mode: CategoryMode) -> FallingMushroom {
+        FallingMushroom {
+            id: self.id.clone(),
+            display_name: self.display_name.clone(),
+            latin_name: self.latin_name.clone(),
+            target_lane: self.target_for(mode),
+            image_key: self.image_key.clone(),
+        }
+    }
+}
+
 /// A mushroom entry with data for all category systems.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CatalogEntry {
     pub id: &'static str,
     pub display_name: &'static str,
@@ -95,6 +153,17 @@ impl CatalogEntry {
             CategoryMode::Color => self.targets[1],
             CategoryMode::Season => self.targets[2],
             CategoryMode::Function => self.targets[3],
+        }
+    }
+
+    pub fn to_runtime_entry(&self) -> RuntimeCatalogEntry {
+        RuntimeCatalogEntry {
+            id: self.id.to_owned(),
+            display_name: self.display_name.to_owned(),
+            latin_name: self.latin_name.to_owned(),
+            image_key: self.image_key.to_owned(),
+            targets: self.targets,
+            provenance: CatalogProvenance::built_in(),
         }
     }
 }
@@ -135,9 +204,15 @@ pub const MUSHROOM_CATALOG: &[CatalogEntry] = &[
     CatalogEntry { id: "jack-o-lantern", display_name: "Jack O'Lantern", latin_name: "Omphalotus olearius", image_key: "jack-o-lantern", targets: [1, 0, 2, 2] },
 ];
 
-/// Get mushrooms for the given variety level.
-pub fn catalog_for_variety(variety: Variety) -> &'static [CatalogEntry] {
-    &MUSHROOM_CATALOG[..variety.count()]
+pub fn built_in_catalog(variety: Variety) -> Vec<RuntimeCatalogEntry> {
+    MUSHROOM_CATALOG[..variety.count()]
+        .iter()
+        .map(CatalogEntry::to_runtime_entry)
+        .collect()
+}
+
+pub fn cap_catalog(entries: &[RuntimeCatalogEntry], variety: Variety) -> Vec<RuntimeCatalogEntry> {
+    entries.iter().take(variety.count()).cloned().collect()
 }
 
 /// Pick a mushroom that hasn't been correctly sorted yet.
@@ -145,13 +220,12 @@ pub fn catalog_for_variety(variety: Variety) -> &'static [CatalogEntry] {
 pub fn pick_mushroom(
     sequence_number: usize,
     mode: CategoryMode,
-    variety: Variety,
+    catalog: &[RuntimeCatalogEntry],
     sorted_ids: &HashSet<String>,
 ) -> Option<FallingMushroom> {
-    let catalog = catalog_for_variety(variety);
-    let available: Vec<&CatalogEntry> = catalog
+    let available: Vec<&RuntimeCatalogEntry> = catalog
         .iter()
-        .filter(|e| !sorted_ids.contains(e.id))
+        .filter(|entry| !sorted_ids.contains(&entry.id))
         .collect();
 
     if available.is_empty() {
@@ -159,12 +233,102 @@ pub fn pick_mushroom(
     }
 
     let index = (sequence_number * 7 + sequence_number / 3) % available.len();
-    let entry = available[index];
-    Some(FallingMushroom {
-        id: entry.id.to_owned(),
-        display_name: entry.display_name.to_owned(),
-        latin_name: entry.latin_name.to_owned(),
-        target_lane: entry.target_for(mode),
-        image_key: entry.image_key.to_owned(),
+    Some(available[index].to_falling_mushroom(mode))
+}
+
+pub fn find_catalog_entry(
+    scientific_name: &str,
+    preferred_common_name: Option<&str>,
+) -> Option<&'static CatalogEntry> {
+    let scientific_key = normalize_name(scientific_name);
+    let common_key = preferred_common_name.map(normalize_name);
+
+    MUSHROOM_CATALOG.iter().find(|entry| {
+        catalog_match_keys(entry)
+            .iter()
+            .map(|key| normalize_name(key))
+            .any(|candidate| {
+                candidate == scientific_key
+                    || common_key
+                        .as_ref()
+                        .map(|common| candidate == *common)
+                        .unwrap_or(false)
+            })
     })
+}
+
+fn catalog_match_keys(entry: &CatalogEntry) -> &'static [&'static str] {
+    match entry.id {
+        "chanterelle" => &["Chanterelle", "Cantharellus cibarius", "Golden Chanterelle"],
+        "fly-agaric" => &["Fly Agaric", "Amanita muscaria"],
+        "king-bolete" => &["King Bolete", "Boletus edulis", "Cep", "Porcino"],
+        "oyster" => &["Oyster Mushroom", "Pleurotus ostreatus"],
+        "shiitake" => &["Shiitake", "Lentinula edodes"],
+        "turkey-tail" => &["Turkey Tail", "Trametes versicolor"],
+        "honey-fungus" => &["Honey Fungus", "Armillaria mellea"],
+        "chaga" => &["Chaga", "Inonotus obliquus"],
+        "cordyceps" => &["Cordyceps", "Ophiocordyceps sinensis", "Cordyceps sinensis", "Cordyceps militaris"],
+        "morel" => &["Morel", "Morchella esculenta", "Yellow Morel"],
+        "death-cap" => &["Death Cap", "Amanita phalloides"],
+        "reishi" => &["Reishi", "Ganoderma lucidum"],
+        "enoki" => &["Enoki", "Flammulina velutipes", "Velvet Shank"],
+        "lions-mane" => &["Lion's Mane", "Lions Mane", "Hericium erinaceus"],
+        "matsutake" => &["Matsutake", "Tricholoma matsutake"],
+        "maitake" => &["Maitake", "Grifola frondosa", "Hen of the Woods"],
+        "destroying-angel" => &["Destroying Angel", "Amanita virosa"],
+        "porcini" => &["Bay Bolete", "Imleria badia", "Porcini"],
+        "chicken-of-woods" => &["Chicken of the Woods", "Laetiporus sulphureus"],
+        "shaggy-ink-cap" => &["Shaggy Ink Cap", "Coprinus comatus", "Shaggy Mane"],
+        "penny-bun" => &["Penny Bun", "Boletus edulis var."],
+        "giant-puffball" => &["Giant Puffball", "Calvatia gigantea"],
+        "jelly-ear" => &["Jelly Ear", "Auricularia auricula-judae", "Jew's Ear", "Jews Ear"],
+        "birch-polypore" => &["Birch Polypore", "Fomitopsis betulina", "Piptoporus betulinus"],
+        "false-morel" => &["False Morel", "Gyromitra esculenta"],
+        "wood-ear" => &["Wood Ear", "Auricularia polytricha"],
+        "agarikon" => &["Agarikon", "Laricifomes officinalis", "Fomitopsis officinalis"],
+        "jack-o-lantern" => &["Jack O'Lantern", "Jack O Lantern", "Omphalotus olearius"],
+        _ => &[],
+    }
+}
+
+fn normalize_name(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            'A'..='Z' => ch.to_ascii_lowercase(),
+            'a'..='z' | '0'..='9' => ch,
+            _ => ' ',
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cap_catalog, find_catalog_entry, built_in_catalog, Variety};
+
+    #[test]
+    fn caps_runtime_catalog_to_variety_size() {
+        let entries = built_in_catalog(Variety::Large);
+        assert_eq!(cap_catalog(&entries, Variety::Small).len(), 12);
+        assert_eq!(cap_catalog(&entries, Variety::Medium).len(), 20);
+    }
+
+    #[test]
+    fn finds_catalog_entries_by_scientific_or_common_name() {
+        assert_eq!(
+            find_catalog_entry("Amanita muscaria", None).map(|entry| entry.id),
+            Some("fly-agaric")
+        );
+        assert_eq!(
+            find_catalog_entry("something else", Some("Hen of the Woods")).map(|entry| entry.id),
+            Some("maitake")
+        );
+        assert_eq!(
+            find_catalog_entry("Laricifomes officinalis", None).map(|entry| entry.id),
+            Some("agarikon")
+        );
+    }
 }
