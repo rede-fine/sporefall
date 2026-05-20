@@ -69,6 +69,25 @@
 
 ---
 
+## Phase 3b: Gameplay Refinement (Post-MVP)
+
+**Purpose**: Align the playable core with full spec requirements: wrong-mushroom retry, smaller bucket zone, stop/pause, and real images.
+
+- [ ] T039 [US1] Resize play area layout so bucket zone is small and fall zone is large in crates/web_app/src/render.rs
+- [ ] T040 [US1] Implement wrong-mushroom ejection and re-entry from top in crates/game_core/src/rules.rs
+- [ ] T041 [US1] Add retry animation and side-ejection rendering in crates/web_app/src/render.rs
+- [ ] T042 [US1] Add stop/pause game action (Escape key) in crates/web_app/src/input.rs and crates/web_app/src/app.rs
+- [ ] T043 [US1] Render pause overlay with resume/quit options in crates/web_app/src/render.rs
+- [ ] T044 [P] [US1] Source real mushroom photographs (public domain/CC0) and add to assets/images/
+- [ ] T045 [P] [US1] Build image loading and caching system for WASM in crates/web_app/src/images.rs
+- [ ] T046 [US1] Replace sprite placeholders with loaded real mushroom images in crates/web_app/src/render.rs
+- [ ] T047 [US1] Update curated mushroom dataset with image paths in assets/data/mushrooms.v1.json
+- [ ] T048 [US1] Add image attribution entries for all sourced photographs in assets/data/image_attributions.json
+
+**Checkpoint**: Full gameplay feel with real images, retry mechanic, and session control.
+
+---
+
 ## Phase 4: User Story 2 - Configure Learning Mode (Priority: P2)
 
 **Goal**: Allow players to choose bucket sets and clue modes while guaranteeing the configured session remains solvable from curated data.

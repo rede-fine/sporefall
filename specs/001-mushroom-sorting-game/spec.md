@@ -94,6 +94,11 @@ As a returning player, I want levels to vary the active bucket sets and challeng
 - **FR-023**: The system MUST present bucket categories as coherent, mutually exclusive sets (e.g., all ecology labels OR all color labels in one session) that the player selects before starting.
 - **FR-024**: The system MUST allow multiple mushrooms to land in the same bucket lane; stacking is permitted and the row clears only when every lane has at least one entry.
 - **FR-025**: The system MUST display a representative image of each falling mushroom alongside or instead of its text clue, depending on the player's clue mode selection.
+- **FR-026**: The bucket zone at the bottom of the play area MUST occupy a small fraction of the vertical space so that the majority of the fall distance gives the player time to decide.
+- **FR-027**: When a mushroom is placed in the wrong bucket, it MUST NOT remain in that bucket; instead it MUST be ejected to the side and re-enter play from the top as a retry.
+- **FR-028**: The system MUST provide a clearly accessible way for the player to stop or pause the current game session at any time.
+- **FR-029**: The system MUST use real mushroom photographs or high-quality illustrations sourced from public-domain or permissively-licensed collections for each playable species.
+- **FR-030**: The game deployment at https://rede-fine.github.io/sporefall/ MUST reflect the latest release build.
 
 ### Key Entities *(include if feature involves data)*
 
