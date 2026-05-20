@@ -20,6 +20,7 @@ pub struct PlacementFeedback {
     pub row_cleared: bool,
     pub awarded_points: u32,
     pub placed_lane: usize,
+    pub mushroom_id: String,
     pub mushroom_name: String,
     pub cleared_mushrooms: Vec<FallingMushroom>,
 }

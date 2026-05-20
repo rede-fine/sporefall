@@ -113,6 +113,7 @@ impl GameState {
 
         let correct_lane = mushroom.target_lane == self.active_lane;
         let placed_lane = self.active_lane;
+        let mushroom_id = mushroom.id.clone();
         let mushroom_name = mushroom.display_name.clone();
 
         let mut awarded_points = if correct_lane {
@@ -144,6 +145,7 @@ impl GameState {
             row_cleared,
             awarded_points,
             placed_lane,
+            mushroom_id,
             mushroom_name,
             cleared_mushrooms,
         })
