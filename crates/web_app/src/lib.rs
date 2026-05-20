@@ -6,7 +6,7 @@ mod settings;
 
 use app::AppState;
 use input::map_key_to_action;
-use render::{draw, RenderState};
+use render::draw;
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -29,54 +29,58 @@ pub fn start() -> Result<(), JsValue> {
         .dyn_into::<CanvasRenderingContext2d>()?;
 
     let app = Rc::new(RefCell::new(AppState::new(Default::default())));
-    app.borrow_mut().ensure_active_mushroom();
 
-    sync_overlay(&document, &app.borrow());
-    render_app(&context, &app.borrow());
-    bind_keyboard_events(&document, &context, &app)?;
+    // Initial render (menu)
+    draw(&context, &app.borrow());
+
+    // Keyboard input
+    {
+        let app = Rc::clone(&app);
+        let keyboard_handler = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |event: web_sys::KeyboardEvent| {
+            if let Some(action) = map_key_to_action(&event.key()) {
+                event.prevent_default();
+                app.borrow_mut().handle_action(action);
+            }
+        });
+        document.add_event_listener_with_callback("keydown", keyboard_handler.as_ref().unchecked_ref())?;
+        keyboard_handler.forget();
+    }
+
+    // Animation loop via requestAnimationFrame
+    start_game_loop(context, app, &window);
+
     Ok(())
 }
 
-fn render_app(context: &CanvasRenderingContext2d, app: &AppState) {
-    draw(
-        context,
-        &RenderState {
-            game: &app.game,
-            feedback: app.feedback_message(),
-        },
-    );
-}
+fn start_game_loop(
+    context: CanvasRenderingContext2d,
+    app: Rc<RefCell<AppState>>,
+    window: &web_sys::Window,
+) {
+    let f: Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>> = Rc::new(RefCell::new(None));
+    let g = Rc::clone(&f);
+    let win = window.clone();
+    let last_time: Rc<RefCell<f64>> = Rc::new(RefCell::new(0.0));
 
-fn bind_keyboard_events(
-    document: &web_sys::Document,
-    context: &CanvasRenderingContext2d,
-    app: &Rc<RefCell<AppState>>,
-) -> Result<(), JsValue> {
-    let context = Rc::new(context.clone());
-    let document = document.clone();
-    let app = Rc::clone(app);
-    let doc_for_closure = document.clone();
-    let keyboard_handler = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(move |event: web_sys::KeyboardEvent| {
-        if let Some(action) = map_key_to_action(&event.key()) {
-            event.prevent_default();
-            let mut app = app.borrow_mut();
-            app.handle_action(action);
-            sync_overlay(&doc_for_closure, &app);
-            render_app(&context, &app);
+    *g.borrow_mut() = Some(Closure::new(move |timestamp: f64| {
+        let mut lt = last_time.borrow_mut();
+        let dt = if *lt == 0.0 { 0.0 } else { (timestamp - *lt) / 1000.0 };
+        *lt = timestamp;
+
+        {
+            let mut state = app.borrow_mut();
+            state.tick(dt.min(0.1)); // cap dt to avoid jumps
         }
-    });
 
-    document.add_event_listener_with_callback("keydown", keyboard_handler.as_ref().unchecked_ref())?;
-    keyboard_handler.forget();
-    Ok(())
-}
+        draw(&context, &app.borrow());
 
-fn sync_overlay(document: &web_sys::Document, app: &AppState) {
-    if let Some(score_node) = document.get_element_by_id("score-value") {
-        score_node.set_text_content(Some(&app.game.score().to_string()));
-    }
+        // Schedule next frame
+        let _ = win.request_animation_frame(
+            f.borrow().as_ref().unwrap().as_ref().unchecked_ref()
+        );
+    }));
 
-    if let Some(feedback_node) = document.get_element_by_id("feedback-value") {
-        feedback_node.set_text_content(Some(app.feedback_message().unwrap_or("Move with arrow keys, then press space to drop.")));
-    }
+    let _ = window.request_animation_frame(
+        g.borrow().as_ref().unwrap().as_ref().unchecked_ref()
+    );
 }
