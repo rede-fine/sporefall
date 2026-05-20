@@ -6,6 +6,8 @@ pub enum InputAction {
     MoveDown,
     HardDrop,
     Confirm,
+    Pause,
+    NextLevel,
 }
 
 pub fn map_key_to_action(key: &str) -> Option<InputAction> {
@@ -16,6 +18,8 @@ pub fn map_key_to_action(key: &str) -> Option<InputAction> {
         "ArrowDown" => Some(InputAction::MoveDown),
         " " | "Space" | "Spacebar" => Some(InputAction::HardDrop),
         "Enter" => Some(InputAction::Confirm),
+        "Escape" => Some(InputAction::Pause),
+        "n" | "N" => Some(InputAction::NextLevel),
         _ => None,
     }
 }

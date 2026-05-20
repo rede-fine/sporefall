@@ -1,10 +1,13 @@
 mod app;
 mod catalog;
+mod facts;
+mod images;
 mod input;
 mod render;
 mod settings;
 
 use app::AppState;
+use images::ImageCache;
 use input::map_key_to_action;
 use render::draw;
 use std::{cell::RefCell, rc::Rc};
@@ -30,8 +33,13 @@ pub fn start() -> Result<(), JsValue> {
 
     let app = Rc::new(RefCell::new(AppState::new(Default::default())));
 
+    // Preload images
+    let mut image_cache = ImageCache::new();
+    image_cache.preload_all();
+    let image_cache = Rc::new(RefCell::new(image_cache));
+
     // Initial render (menu)
-    draw(&context, &app.borrow());
+    draw(&context, &app.borrow(), &image_cache.borrow());
 
     // Keyboard input
     {
@@ -47,7 +55,7 @@ pub fn start() -> Result<(), JsValue> {
     }
 
     // Animation loop via requestAnimationFrame
-    start_game_loop(context, app, &window);
+    start_game_loop(context, app, image_cache, &window);
 
     Ok(())
 }
@@ -55,6 +63,7 @@ pub fn start() -> Result<(), JsValue> {
 fn start_game_loop(
     context: CanvasRenderingContext2d,
     app: Rc<RefCell<AppState>>,
+    image_cache: Rc<RefCell<ImageCache>>,
     window: &web_sys::Window,
 ) {
     let f: Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>> = Rc::new(RefCell::new(None));
@@ -72,7 +81,7 @@ fn start_game_loop(
             state.tick(dt.min(0.1)); // cap dt to avoid jumps
         }
 
-        draw(&context, &app.borrow());
+        draw(&context, &app.borrow(), &image_cache.borrow());
 
         // Schedule next frame
         let _ = win.request_animation_frame(
