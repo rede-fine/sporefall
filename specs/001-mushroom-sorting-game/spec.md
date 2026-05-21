@@ -4,7 +4,7 @@
 
 **Created**: 2026-05-19
 
-**Updated**: 2026-05-20
+**Updated**: 2026-05-21
 
 **Status**: In Progress
 
@@ -207,7 +207,7 @@ As a player, I want to see interesting educational facts about mushrooms when I 
 - **Falling Mushroom**: An active game piece with ID, display name, latin name, target lane for the current category, and image key. Travels from top to bottom of the fall zone.
 - **Category Mode**: One of 4 sorting systems (Cap Color, Culinary Type, Ecological Role, Peak Season) with 4 mutually exclusive lane labels each.
 - **Game Mode (Difficulty)**: Controls what info is shown — Normal (full info), Tricky (photo only), Expert (emoji + latin name).
-- **Variety**: Controls species count — Small (12), Medium (20), Large (28).
+- **Variety**: Controls species count — Small (12), Medium (20), Large (28), or iNaturalist (user's imported observations, variable count).
 - **Basket Collection**: Accumulated mushrooms from all row clears in the session, displayed in the right-side panel.
 - **Center Animation**: Visual feedback effect (green checkmark, red X, or basket bounce) played at the center of the game area.
 - **Level Profile**: A fixed progression step (1-4) that determines which Category Mode is active.
@@ -219,14 +219,25 @@ As a player, I want to see interesting educational facts about mushrooms when I 
 
 ## Implemented Extension: iNaturalist Integration
 
-- The page provides an iNaturalist import form where the player enters a username and start/end dates.
-- The browser fetches fungi observations directly from the public iNaturalist observations API using `user_login`, `taxon_id=47170`, `photos=true`, and the selected date window.
-- Only observations with usable photos that match species already supported by the built-in Sporefall catalog are playable. This keeps all 4 category systems accurate without introducing heuristic bucket assignments.
-- When multiple observations match the same supported species, the most recent playable observation is used for that species.
-- Imported runs reuse the existing Game Mode and Variety selections:
-  - Variety acts as a cap on the imported set.
-  - If the import yields fewer playable species than the selected Variety, gameplay scales down to the imported set size instead of failing.
+- The page provides an iNaturalist import form where the player enters a username and optional date range.
+- The browser fetches ALL fungi observations from the public iNaturalist API using `user_login`, `taxon_id=47170`, `photos=true`, paginating up to 200 unique species.
+- ALL observed fungi species are imported — not limited to built-in catalog matches. Species are assigned game attributes via:
+  1. Built-in catalog match (exact latin name)
+  2. Extended species database (`species_db.rs`, 100+ species with known attributes)
+  3. Genus-level fallback (50+ genera with default attributes)
+  4. Ultimate fallback (generic attributes) for completely unknown species
+- Photos are loaded from iNaturalist, preferring CC-licensed taxon default photos (CORS-friendly from S3) over user observation photos (often all-rights-reserved).
+- After import, "iNaturalist" appears as a 4th Variety option in the menu (auto-selected by default).
+- A species selection panel shows all imported species with checkboxes, thumbnails, and a "Deselect All" toggle. Players can exclude species before starting.
+- The game reads only checked species when starting an iNaturalist game session.
 - Imported entries retain observation provenance metadata: observation URL, observer login, observed-on date, image URL, image license, and image attribution.
+
+## Implemented Extension: Session Adaptation & Review
+
+- Fall speed now adapts to recent placement accuracy, so strong runs accelerate and struggling runs ease off.
+- The Game Over screen shows overall session accuracy plus a ranked list of the species the player struggled with most.
+- Imported observation species can cycle through additional observation photos during gameplay when gallery photos are available.
+- Collection thumbnails on review screens can be tapped or clicked to open a species-card overlay with taxonomy and category details.
 
 ## Implemented Extension: Mobile Readiness & Pointer Controls
 

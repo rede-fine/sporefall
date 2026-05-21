@@ -43,9 +43,10 @@ impl CategoryMode {
 /// How many mushrooms are available per variety set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Variety {
-    Small,  // 12 mushrooms (core set)
-    Medium, // 20 mushrooms
-    Large,  // 28+ mushrooms
+    Small,       // 12 mushrooms (core set)
+    Medium,      // 20 mushrooms
+    Large,       // 28+ mushrooms
+    INaturalist, // User's imported observations
 }
 
 impl Variety {
@@ -53,11 +54,17 @@ impl Variety {
         &[Self::Small, Self::Medium, Self::Large]
     }
 
+    /// All options including iNaturalist (when available)
+    pub fn all_with_inat() -> &'static [Variety] {
+        &[Self::Small, Self::Medium, Self::Large, Self::INaturalist]
+    }
+
     pub fn label(&self) -> &'static str {
         match self {
             Self::Small => "Small",
             Self::Medium => "Medium",
             Self::Large => "Large",
+            Self::INaturalist => "iNaturalist",
         }
     }
 
@@ -66,6 +73,7 @@ impl Variety {
             Self::Small => "12 species - learn the basics",
             Self::Medium => "20 species - more variety",
             Self::Large => "28 species - full challenge",
+            Self::INaturalist => "Your imported observations",
         }
     }
 
@@ -74,6 +82,7 @@ impl Variety {
             Self::Small => 12,
             Self::Medium => 20,
             Self::Large => 28,
+            Self::INaturalist => 0, // dynamic
         }
     }
 }
@@ -87,6 +96,8 @@ pub struct CatalogProvenance {
     pub image_attribution: Option<String>,
     pub observed_on: Option<String>,
     pub observer_login: Option<String>,
+    /// Additional observation photos for this species (gallery mode)
+    pub gallery_urls: Vec<String>,
 }
 
 impl CatalogProvenance {
@@ -99,6 +110,7 @@ impl CatalogProvenance {
             image_attribution: None,
             observed_on: None,
             observer_login: None,
+            gallery_urls: Vec::new(),
         }
     }
 }
@@ -182,7 +194,7 @@ pub const MUSHROOM_CATALOG: &[CatalogEntry] = &[
     CatalogEntry { id: "chaga", display_name: "Chaga", latin_name: "Inonotus obliquus", image_key: "chaga", targets: [2, 1, 3, 1] },
     CatalogEntry { id: "cordyceps", display_name: "Cordyceps", latin_name: "Ophiocordyceps sinensis", image_key: "cordyceps", targets: [2, 0, 1, 1] },
     CatalogEntry { id: "morel", display_name: "Morel", latin_name: "Morchella esculenta", image_key: "morel", targets: [0, 1, 0, 0] },
-    CatalogEntry { id: "death-cap", display_name: "Death Cap", latin_name: "Amanita phalloides", image_key: "death-cap", targets: [3, 2, 2, 2] },
+    CatalogEntry { id: "death-cap", display_name: "Death Cap", latin_name: "Amanita phalloides", image_key: "death-cap", targets: [0, 2, 2, 2] },
     CatalogEntry { id: "reishi", display_name: "Reishi", latin_name: "Ganoderma lucidum", image_key: "reishi", targets: [1, 0, 1, 1] },
     // === MEDIUM SET (+8 = 20) ===
     CatalogEntry { id: "enoki", display_name: "Enoki", latin_name: "Flammulina velutipes", image_key: "enoki", targets: [1, 2, 3, 0] },
@@ -196,7 +208,7 @@ pub const MUSHROOM_CATALOG: &[CatalogEntry] = &[
     // === LARGE SET (+8 = 28) ===
     CatalogEntry { id: "penny-bun", display_name: "Penny Bun", latin_name: "Boletus edulis var.", image_key: "penny-bun", targets: [0, 1, 2, 0] },
     CatalogEntry { id: "giant-puffball", display_name: "Giant Puffball", latin_name: "Calvatia gigantea", image_key: "giant-puffball", targets: [1, 2, 2, 0] },
-    CatalogEntry { id: "jelly-ear", display_name: "Jelly Ear", latin_name: "Auricularia auricula-judae", image_key: "jelly-ear", targets: [1, 1, 3, 3] },
+    CatalogEntry { id: "jelly-ear", display_name: "Jelly Ear", latin_name: "Auricularia auricula-judae", image_key: "jelly-ear", targets: [1, 1, 3, 0] },
     CatalogEntry { id: "birch-polypore", display_name: "Birch Polypore", latin_name: "Fomitopsis betulina", image_key: "birch-polypore", targets: [2, 2, 2, 1] },
     CatalogEntry { id: "false-morel", display_name: "False Morel", latin_name: "Gyromitra esculenta", image_key: "false-morel", targets: [0, 1, 0, 2] },
     CatalogEntry { id: "wood-ear", display_name: "Wood Ear", latin_name: "Auricularia polytricha", image_key: "wood-ear", targets: [1, 1, 2, 0] },

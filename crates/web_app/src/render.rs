@@ -29,11 +29,17 @@ pub fn draw(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCache)
         GamePhase::LevelComplete => draw_level_complete(ctx, app, images),
         GamePhase::GameOver => draw_game_over(ctx, app, images),
     }
+
+    // Species card overlay (drawn on top of everything)
+    if let Some(card) = &app.species_card {
+        draw_species_card(ctx, app, card, images);
+    }
 }
 
 fn draw_menu(ctx: &CanvasRenderingContext2d, app: &AppState) {
     let viewport = app.viewport;
-    let layout = ui::menu_layout(viewport);
+    let has_inat = app.has_imported_catalog();
+    let layout = ui::menu_layout(viewport, has_inat);
     let title_x = if viewport.compact { 54.0 } else { 96.0 };
     let title_y = if viewport.compact { 86.0 } else { 84.0 };
 
@@ -43,7 +49,7 @@ fn draw_menu(ctx: &CanvasRenderingContext2d, app: &AppState) {
     } else {
         "bold 52px Georgia"
     });
-    let _ = ctx.fill_text("Sporefall", title_x, title_y);
+    let _ = ctx.fill_text("\u{1F344} Sporefall", title_x, title_y);
 
     ctx.set_fill_style_str("#a8c49a");
     ctx.set_font(if viewport.compact {
@@ -86,22 +92,29 @@ fn draw_menu(ctx: &CanvasRenderingContext2d, app: &AppState) {
         );
     }
 
-    for (index, variety) in Variety::all().iter().enumerate() {
+    let variety_options = app.variety_options();
+    for (index, variety) in variety_options.iter().enumerate() {
+        let desc = if *variety == Variety::INaturalist {
+            &format!("{} species from your observations", app.imported_species_count())
+        } else {
+            variety.description()
+        };
         draw_menu_option(
             ctx,
             &layout.variety_cards[index],
             variety.label(),
-            variety.description(),
+            desc,
             app.menu_column == 1 && index == app.variety_selection,
             index == app.variety_selection,
             viewport.compact,
         );
     }
 
+    let variety_label = variety_options[app.variety_selection].label();
     let start_label = format!(
         "Start {} / {}",
         Difficulty::all()[app.menu_selection].label(),
-        Variety::all()[app.variety_selection].label()
+        variety_label
     );
     draw_button(
         ctx,
@@ -126,21 +139,20 @@ fn draw_menu(ctx: &CanvasRenderingContext2d, app: &AppState) {
     } else {
         "14px Georgia"
     });
-    let mut info_y = layout.start_button.y - if viewport.compact { 54.0 } else { 28.0 };
+    let info_y = layout.start_button.y - if viewport.compact { 34.0 } else { 14.0 };
     for line in level_lines {
         let _ = ctx.fill_text(&line, title_x, info_y);
-        info_y += if viewport.compact { 24.0 } else { 18.0 };
     }
 
-    if let Some(summary) = app.menu_import_summary() {
-        ctx.set_fill_style_str("#f5d67a");
+    // Show feedback message (e.g., "Loaded N species for @user")
+    if let Some(msg) = app.feedback_message() {
+        ctx.set_fill_style_str("#d7c486");
         ctx.set_font(if viewport.compact {
-            "15px Georgia"
+            "14px Georgia"
         } else {
             "12px Georgia"
         });
-        let import_y = layout.start_button.y - if viewport.compact { 88.0 } else { 50.0 };
-        let _ = ctx.fill_text(&summary, title_x, import_y);
+        let _ = ctx.fill_text(msg, title_x, info_y - if viewport.compact { 22.0 } else { 16.0 });
     }
 
     ctx.set_fill_style_str("#a8c49a");
@@ -179,26 +191,35 @@ fn draw_menu_option(
     ctx.set_line_width(if selected { 3.0 } else { 1.5 });
     ctx.stroke_rect(rect.x, rect.y, rect.width, rect.height);
 
+    // Vertically center title + subtitle within the card
+    let title_font_size: f64 = if compact { 24.0 } else { 21.0 };
+    let subtitle_font_size: f64 = if compact { 16.0 } else { 13.0 };
+    let wrapped = wrap_text(subtitle, if compact { 38 } else { 34 });
+    let line_count = wrapped.len().min(2);
+    let subtitle_line_spacing = if compact { 18.0 } else { 14.0 };
+    let title_to_subtitle_gap = if compact { 6.0 } else { 5.0 };
+    let content_height = title_font_size + title_to_subtitle_gap + line_count as f64 * subtitle_line_spacing;
+    let top_offset = (rect.height - content_height) / 2.0;
+
     ctx.set_fill_style_str(if active { "#f5d67a" } else { "#f8f3e8" });
     ctx.set_font(if compact {
         "bold 24px Georgia"
     } else {
         "bold 21px Georgia"
     });
-    let _ = ctx.fill_text(title, rect.x + 18.0, rect.y + if compact { 28.0 } else { 24.0 });
+    let _ = ctx.fill_text(title, rect.x + 18.0, rect.y + top_offset + title_font_size);
 
-    let wrapped = wrap_text(subtitle, if compact { 38 } else { 34 });
     ctx.set_fill_style_str("#a8c49a");
     ctx.set_font(if compact {
         "16px Georgia"
     } else {
         "13px Georgia"
     });
-    for (index, line) in wrapped.iter().take(if compact { 2 } else { 2 }).enumerate() {
+    for (index, line) in wrapped.iter().take(2).enumerate() {
         let _ = ctx.fill_text(
             line,
             rect.x + 18.0,
-            rect.y + if compact { 50.0 } else { 44.0 } + index as f64 * if compact { 18.0 } else { 14.0 },
+            rect.y + top_offset + title_font_size + title_to_subtitle_gap + (index as f64 + 1.0) * subtitle_line_spacing,
         );
     }
 }
@@ -260,13 +281,13 @@ fn draw_playing(ctx: &CanvasRenderingContext2d, app: &AppState, images: &ImageCa
         "11px Georgia"
     });
     let badge_y = if viewport.compact { 96.0 } else { 58.0 };
+    let badge_text = if app.using_imported_catalog {
+        format!("[{} / iNaturalist]", app.difficulty.label())
+    } else {
+        format!("[{} / {}]", app.difficulty.label(), app.variety.label())
+    };
     let _ = ctx.fill_text(
-        &format!(
-            "[{} / {} / {}]",
-            app.difficulty.label(),
-            app.variety.label(),
-            app.active_source_label()
-        ),
+        &badge_text,
         layout.fall_zone.x,
         badge_y,
     );
@@ -695,7 +716,12 @@ fn draw_basket_fact(
         }
     }
 
-    let button = ui::primary_button_rect(viewport);
+    let button = Rect {
+        x: fact_box.x + (fact_box.width - if viewport.compact { 240.0 } else { 200.0 }) / 2.0,
+        y: fact_box.y + fact_box.height - if viewport.compact { 70.0 } else { 62.0 },
+        width: if viewport.compact { 240.0 } else { 200.0 },
+        height: if viewport.compact { 52.0 } else { 44.0 },
+    };
     draw_button(
         ctx,
         &button,
@@ -840,8 +866,10 @@ fn draw_level_complete(ctx: &CanvasRenderingContext2d, app: &AppState, images: &
 
 fn draw_pause_overlay(ctx: &CanvasRenderingContext2d, app: &AppState) {
     let viewport = app.viewport;
-    ctx.set_fill_style_str("rgba(0, 0, 0, 0.76)");
+    ctx.set_fill_style_str("rgba(0, 0, 0, 0.88)");
     ctx.fill_rect(0.0, 0.0, viewport.width, viewport.height);
+
+    let cx = viewport.width / 2.0;
 
     ctx.set_fill_style_str("#f8f3e8");
     ctx.set_font(if viewport.compact {
@@ -849,7 +877,8 @@ fn draw_pause_overlay(ctx: &CanvasRenderingContext2d, app: &AppState) {
     } else {
         "bold 48px Georgia"
     });
-    let _ = ctx.fill_text("Paused", if viewport.compact { 242.0 } else { 370.0 }, if viewport.compact { 240.0 } else { 220.0 });
+    ctx.set_text_align("center");
+    let _ = ctx.fill_text("Paused", cx, if viewport.compact { 240.0 } else { 200.0 });
 
     ctx.set_fill_style_str("#a8c49a");
     ctx.set_font(if viewport.compact {
@@ -859,9 +888,10 @@ fn draw_pause_overlay(ctx: &CanvasRenderingContext2d, app: &AppState) {
     });
     let _ = ctx.fill_text(
         "Resume with Enter/Esc or click Resume.",
-        if viewport.compact { 152.0 } else { 272.0 },
-        if viewport.compact { 292.0 } else { 268.0 },
+        cx,
+        if viewport.compact { 284.0 } else { 240.0 },
     );
+    ctx.set_text_align("left");
 
     let secondary = ui::secondary_button_rect(viewport);
     let primary = ui::primary_button_rect(viewport);
@@ -909,25 +939,32 @@ fn draw_game_over(ctx: &CanvasRenderingContext2d, app: &AppState, images: &Image
         if viewport.compact { 224.0 } else { 324.0 },
         if viewport.compact { 164.0 } else { 178.0 },
     );
+    let accuracy_pct = (app.session_accuracy() * 100.0).round() as u32;
     let _ = ctx.fill_text(
-        &format!("{} mushrooms in the basket log", app.collected_mushrooms.len()),
-        if viewport.compact { 128.0 } else { 252.0 },
+        &format!(
+            "{} mushrooms collected — {}% accuracy",
+            app.collected_mushrooms.len(),
+            accuracy_pct
+        ),
+        if viewport.compact { 100.0 } else { 222.0 },
         if viewport.compact { 196.0 } else { 208.0 },
     );
 
+    // Species statistics section
+    let struggled = app.struggled_species();
     let grid_box = if viewport.compact {
         Rect {
             x: 48.0,
-            y: 236.0,
+            y: if struggled.is_empty() { 236.0 } else { 236.0 },
             width: viewport.width - 96.0,
-            height: 520.0,
+            height: if struggled.is_empty() { 520.0 } else { 320.0 },
         }
     } else {
         Rect {
             x: 70.0,
             y: 240.0,
             width: viewport.width - 140.0,
-            height: 180.0,
+            height: if struggled.is_empty() { 180.0 } else { 120.0 },
         }
     };
     ctx.set_fill_style_str("#213224");
@@ -953,6 +990,94 @@ fn draw_game_over(ctx: &CanvasRenderingContext2d, app: &AppState, images: &Image
             let _ = ctx.draw_image_with_html_image_element_and_dw_and_dh(image, x, y, thumb_size, thumb_size);
         } else {
             draw_fallback_sprite(ctx, &mushroom.image_key, x, y, thumb_size);
+        }
+    }
+
+    // "Struggled Species" panel
+    if !struggled.is_empty() {
+        let stats_box = if viewport.compact {
+            Rect {
+                x: 48.0,
+                y: grid_box.y + grid_box.height + 18.0,
+                width: viewport.width - 96.0,
+                height: 190.0,
+            }
+        } else {
+            Rect {
+                x: 70.0,
+                y: grid_box.y + grid_box.height + 14.0,
+                width: viewport.width - 140.0,
+                height: 120.0,
+            }
+        };
+        ctx.set_fill_style_str("#2a1e1e");
+        ctx.fill_rect(stats_box.x, stats_box.y, stats_box.width, stats_box.height);
+        ctx.set_stroke_style_str("#6a4a4a");
+        ctx.set_line_width(1.5);
+        ctx.stroke_rect(stats_box.x, stats_box.y, stats_box.width, stats_box.height);
+
+        ctx.set_fill_style_str("#f5a0a0");
+        ctx.set_font(if viewport.compact {
+            "bold 18px Georgia"
+        } else {
+            "bold 13px Georgia"
+        });
+        let _ = ctx.fill_text(
+            "Species You Struggled With:",
+            stats_box.x + 14.0,
+            stats_box.y + if viewport.compact { 24.0 } else { 18.0 },
+        );
+
+        let line_height = if viewport.compact { 28.0 } else { 18.0 };
+        let mut y = stats_box.y + if viewport.compact { 52.0 } else { 36.0 };
+        let max_shown = if viewport.compact { 5 } else { 5 };
+        for (id, stats) in struggled.iter().take(max_shown) {
+            if y + line_height > stats_box.y + stats_box.height - 8.0 {
+                break;
+            }
+            let name = app.species_display_name(id);
+            let short = shorten_name(&name, if viewport.compact { 20 } else { 18 });
+            ctx.set_fill_style_str("#f8f3e8");
+            ctx.set_font(if viewport.compact {
+                "16px Georgia"
+            } else {
+                "12px Georgia"
+            });
+            let _ = ctx.fill_text(&short, stats_box.x + 14.0, y);
+
+            ctx.set_fill_style_str("#f5a0a0");
+            let _ = ctx.fill_text(
+                &format!("✗{}", stats.wrong),
+                stats_box.x + if viewport.compact { 280.0 } else { 200.0 },
+                y,
+            );
+            ctx.set_fill_style_str("#a0f5a0");
+            let _ = ctx.fill_text(
+                &format!("✓{}", stats.correct),
+                stats_box.x + if viewport.compact { 340.0 } else { 240.0 },
+                y,
+            );
+            let acc = (stats.accuracy() * 100.0).round() as u32;
+            ctx.set_fill_style_str("#d7c486");
+            let _ = ctx.fill_text(
+                &format!("{}%", acc),
+                stats_box.x + if viewport.compact { 410.0 } else { 280.0 },
+                y,
+            );
+            y += line_height;
+        }
+        if struggled.len() > max_shown {
+            ctx.set_fill_style_str("#8aaa7c");
+            ctx.set_font(if viewport.compact {
+                "14px Georgia"
+            } else {
+                "10px Georgia"
+            });
+            let _ = ctx.fill_text(
+                &format!("+{} more", struggled.len() - max_shown),
+                stats_box.x + 14.0,
+                y,
+            );
         }
     }
 
@@ -987,12 +1112,13 @@ fn draw_button(
     } else {
         "bold 18px Georgia"
     });
-    let label_width = label.len() as f64 * if compact { 9.0 } else { 8.0 };
+    ctx.set_text_align("center");
     let _ = ctx.fill_text(
         label,
-        rect.x + (rect.width - label_width) / 2.0,
+        rect.x + rect.width / 2.0,
         rect.y + rect.height / 2.0 + if compact { 7.0 } else { 6.0 },
     );
+    ctx.set_text_align("left");
 }
 
 fn shorten_name(name: &str, max_chars: usize) -> String {
@@ -1105,4 +1231,101 @@ fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
     }
 
     lines
+}
+
+fn draw_species_card(
+    ctx: &CanvasRenderingContext2d,
+    app: &AppState,
+    card: &crate::app::SpeciesCard,
+    images: &ImageCache,
+) {
+    let v = app.viewport;
+
+    // Dimmed backdrop
+    ctx.set_fill_style_str("rgba(0, 0, 0, 0.75)");
+    ctx.fill_rect(0.0, 0.0, v.width, v.height);
+
+    // Card dimensions
+    let card_w = if v.compact { v.width - 80.0 } else { 380.0 };
+    let card_h = if v.compact { 620.0 } else { 420.0 };
+    let card_x = (v.width - card_w) / 2.0;
+    let card_y = (v.height - card_h) / 2.0;
+
+    // Card background
+    ctx.set_fill_style_str("#1e2d1e");
+    ctx.fill_rect(card_x, card_y, card_w, card_h);
+    ctx.set_stroke_style_str("#6a9a6c");
+    ctx.set_line_width(3.0);
+    ctx.stroke_rect(card_x, card_y, card_w, card_h);
+
+    let pad = 16.0;
+    let img_size = if v.compact { 140.0 } else { 120.0 };
+    let img_x = card_x + (card_w - img_size) / 2.0;
+    let img_y = card_y + pad;
+
+    // Species image
+    if let Some(image) = images.get(&card.image_key) {
+        let _ = ctx.draw_image_with_html_image_element_and_dw_and_dh(
+            image, img_x, img_y, img_size, img_size,
+        );
+    } else {
+        draw_fallback_sprite(ctx, &card.image_key, img_x, img_y, img_size);
+    }
+
+    let mut y = img_y + img_size + 20.0;
+
+    // Display name
+    ctx.set_fill_style_str("#f8f3e8");
+    ctx.set_font(if v.compact { "bold 24px Georgia" } else { "bold 20px Georgia" });
+    let _ = ctx.fill_text(&card.display_name, card_x + pad, y);
+    y += if v.compact { 30.0 } else { 26.0 };
+
+    // Latin name (italic)
+    ctx.set_fill_style_str("#a8c49a");
+    ctx.set_font(if v.compact { "italic 18px Georgia" } else { "italic 15px Georgia" });
+    let _ = ctx.fill_text(&card.latin_name, card_x + pad, y);
+    y += if v.compact { 32.0 } else { 28.0 };
+
+    // Attributes
+    ctx.set_font(if v.compact { "15px Georgia" } else { "13px Georgia" });
+    let attrs = [
+        ("Ecology", card.ecology),
+        ("Color", card.color),
+        ("Season", card.season),
+        ("Function", card.function),
+    ];
+    for (label, value) in &attrs {
+        ctx.set_fill_style_str("#8aaa7c");
+        let _ = ctx.fill_text(&format!("{}: ", label), card_x + pad, y);
+        ctx.set_fill_style_str("#f5d67a");
+        let _ = ctx.fill_text(value, card_x + pad + if v.compact { 90.0 } else { 75.0 }, y);
+        y += if v.compact { 24.0 } else { 20.0 };
+    }
+
+    y += 8.0;
+
+    // Source
+    ctx.set_fill_style_str("#6a8a6c");
+    ctx.set_font(if v.compact { "12px Georgia" } else { "11px Georgia" });
+    let _ = ctx.fill_text(
+        &format!("Source: {}", card.provenance_source),
+        card_x + pad,
+        y,
+    );
+    y += 16.0;
+
+    if let Some(ref date) = card.observed_on {
+        let _ = ctx.fill_text(&format!("Observed: {}", date), card_x + pad, y);
+        y += 16.0;
+    }
+
+    // Dismiss hint
+    let _ = y;
+    ctx.set_fill_style_str("#888");
+    ctx.set_font(if v.compact { "13px Georgia" } else { "11px Georgia" });
+    let _ = ctx.fill_text(
+        "Tap anywhere to close",
+        card_x + pad,
+        card_y + card_h - 12.0,
+    );
 }

@@ -4,11 +4,11 @@
 
 **Input**: Feature specification from `/specs/001-mushroom-sorting-game/spec.md`
 
-**Status**: Complete
+**Status**: Complete with post-ship gameplay and asset cleanup extensions
 
 ## Summary
 
-A browser-based educational mushroom sorting game built in Rust compiled to WebAssembly. Players sort falling mushrooms into labeled bucket lanes using keyboard controls, progressing through 4 levels with different classification systems (Cap Color → Culinary Type → Ecological Role → Peak Season). Features a two-axis difficulty system (Game Mode × Variety), 28 curated mushroom species, center-screen feedback animations, a basket collection panel, and educational facts on row clears.
+A browser-based educational mushroom sorting game built in Rust compiled to WebAssembly. Players sort falling mushrooms into labeled bucket lanes using keyboard controls, progressing through 4 levels with different classification systems (Cap Color → Culinary Type → Ecological Role → Peak Season). Features a two-axis difficulty system (Game Mode × Variety), 28 curated mushroom species, center-screen feedback animations, a basket collection panel, educational facts on row clears, iNaturalist import support, adaptive difficulty scaling, review-time species statistics, and collection species cards.
 
 ## Technical Context
 
@@ -16,7 +16,7 @@ A browser-based educational mushroom sorting game built in Rust compiled to WebA
 
 **Primary Dependencies**: web-sys, wasm-bindgen, game_core (internal crate)
 
-**Storage**: N/A (static site, no persistence)
+**Storage**: Browser runtime state + local SQLite leaderboard service
 
 **Testing**: cargo test (unit tests in game_core)
 
@@ -28,7 +28,7 @@ A browser-based educational mushroom sorting game built in Rust compiled to WebA
 
 **Constraints**: Keyboard-only input, no server runtime, <100ms feedback latency
 
-**Scale/Scope**: 28 mushroom species, 4 levels, single-player
+**Scale/Scope**: 28 bundled species plus variable imported iNaturalist species, 4 levels, single-player
 
 ## Constitution Check
 
@@ -85,8 +85,7 @@ assets/
 │   ├── mushrooms.v1.json          # Curated mushroom dataset
 │   ├── mushrooms.schema.json      # JSON Schema for dataset validation
 │   └── image_attributions.json    # Image provenance and licensing
-├── images/mushrooms/              # Mushroom photographs
-└── mushroom-images/               # Additional image assets
+└── mushroom-images/               # Bundled built-in mushroom photographs
 data_pipeline/
 ├── Cargo.toml
 └── src/

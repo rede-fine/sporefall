@@ -149,8 +149,8 @@
 
 ### Asset Sourcing
 
-- [ ] T035 [P] Source real CC0/public-domain photographs for 16 new mushroom species (currently placeholder copies of chanterelle.jpg) in assets/images/mushrooms/
-- [ ] T036 [P] Update image attribution entries for all newly sourced photographs in assets/data/image_attributions.json
+- [x] T035 [P] Consolidate bundled built-in photographs into assets/mushroom-images/ and remove the old duplicate placeholder-folder path
+- [ ] T036 [P] Update image attribution entries for bundled built-in photographs in assets/data/image_attributions.json
 
 ### Future Feature: iNaturalist Integration
 
@@ -196,7 +196,7 @@
 
 ### Remaining Work Independence
 
-- **Asset sourcing (T035–T036)**: Can proceed immediately; no code changes needed, only replacing placeholder images.
+- **Bundled-photo provenance (T036)**: Can proceed independently; code and asset paths are already cleaned up, only the attribution manifest remains.
 - **iNaturalist integration (T037–T040)**: Complete.
 - **Mobile readiness (T041–T043, T045)**: Complete.
 - **Visual polish (T044–T046)**: All parallelizable; no dependencies on other remaining work.

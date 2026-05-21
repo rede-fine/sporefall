@@ -7,6 +7,7 @@ mod input;
 mod leaderboard;
 mod render;
 mod settings;
+pub mod species_db;
 mod ui;
 
 use app::AppState;
@@ -181,7 +182,7 @@ fn wire_inat_controls(
     set_status(
         &status,
         "idle",
-        "Pick a username and date range, then import fungi observations.",
+        "Enter a username to import all fungi observations.",
     );
 
     let user_input_for_click = user_input.clone();
@@ -225,27 +226,29 @@ fn wire_inat_controls(
                                 .borrow_mut()
                                 .preload_dynamic(&entry.image_key, image_url);
                         }
+                        // Preload gallery photos
+                        for (i, gallery_url) in entry.provenance.gallery_urls.iter().enumerate() {
+                            let gallery_key = format!("{}-gallery-{}", entry.image_key, i);
+                            image_cache
+                                .borrow_mut()
+                                .preload_dynamic(&gallery_key, gallery_url);
+                        }
                     }
 
                     let matched_count = summary.matched_species_count;
                     let user_login = summary.user_login.clone();
                     let summary_message = format!(
-                        "Imported {} playable species for @{} and started a personalized run.",
+                        "Imported {} species for @{}. Select iNaturalist variety to play!",
                         matched_count, user_login
                     );
 
+                    // Populate species selection list
+                    populate_species_list(&imported.entries);
+
                     let mut state = app.borrow_mut();
                     state.remember_import(imported.entries, summary);
-                    match state.start_imported_game() {
-                        Ok(()) => {
-                            state.feedback_message = Some(summary_message.clone());
-                            set_status(&status, "success", &summary_message);
-                        }
-                        Err(error) => {
-                            state.feedback_message = Some(error.clone());
-                            set_status(&status, "error", &error);
-                        }
-                    }
+                    state.feedback_message = Some(summary_message.clone());
+                    set_status(&status, "success", &summary_message);
                 }
                 Err(error) => {
                     app.borrow_mut().feedback_message = Some(error.clone());
@@ -276,9 +279,7 @@ fn should_capture_game_input(document: &Document) -> bool {
 
 fn default_date_range() -> (String, String) {
     let end = js_sys::Date::new_0();
-    let start = js_sys::Date::new_0();
-    start.set_time(end.get_time() - 365.0 * 24.0 * 60.0 * 60.0 * 1000.0);
-    (format_date_input(&start), format_date_input(&end))
+    (String::new(), format_date_input(&end))
 }
 
 fn format_date_input(date: &js_sys::Date) -> String {
@@ -347,6 +348,128 @@ fn apply_viewport(
 
     app.borrow_mut().set_viewport(viewport);
     app.borrow_mut().set_dpr(dpr);
+}
+
+fn populate_species_list(entries: &[catalog::RuntimeCatalogEntry]) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return,
+    };
+    let document = match window.document() {
+        Some(d) => d,
+        None => return,
+    };
+
+    // Show the species list container
+    if let Some(container) = document.get_element_by_id("inat-species-list") {
+        let _ = container.remove_attribute("hidden");
+    }
+
+    // Populate species items
+    let list = match document.get_element_by_id("inat-species-items") {
+        Some(el) => el,
+        None => return,
+    };
+    list.set_inner_html("");
+
+    for entry in entries {
+        let li = match document.create_element("li") {
+            Ok(el) => el,
+            Err(_) => continue,
+        };
+        li.set_class_name("inat-species-item");
+
+        let thumb_html = if let Some(ref url) = entry.provenance.image_url {
+            format!(
+                r#"<img src="{}" alt="" crossorigin="anonymous" />"#,
+                html_escape(url)
+            )
+        } else {
+            String::new()
+        };
+
+        li.set_inner_html(&format!(
+            r#"<label style="display:flex;align-items:center;gap:6px;cursor:pointer;width:100%"><input type="checkbox" checked data-species-id="{}" />{}<span title="{}">{}</span></label>"#,
+            html_escape(&entry.id),
+            thumb_html,
+            html_escape(&entry.latin_name),
+            html_escape(&entry.display_name),
+        ));
+        let _ = list.append_child(&li);
+    }
+
+    // Wire toggle-all button
+    if let Some(toggle_btn) = document.get_element_by_id("inat-toggle-all") {
+        let toggle_handler = Closure::<dyn FnMut(web_sys::Event)>::new(move |_event: web_sys::Event| {
+            let window = web_sys::window().unwrap();
+            let document = window.document().unwrap();
+            let checkboxes = document.query_selector_all("#inat-species-items input[type='checkbox']").unwrap();
+            // Determine if we should select or deselect all
+            let mut any_checked = false;
+            for i in 0..checkboxes.length() {
+                if let Some(cb) = checkboxes.item(i) {
+                    if let Ok(input) = cb.dyn_into::<HtmlInputElement>() {
+                        if input.checked() {
+                            any_checked = true;
+                        }
+                        // Re-wrap to avoid consuming
+                        let _ = input;
+                        break;
+                    }
+                }
+            }
+            let new_state = !any_checked;
+            for i in 0..checkboxes.length() {
+                if let Some(cb) = checkboxes.item(i) {
+                    if let Ok(input) = cb.dyn_into::<HtmlInputElement>() {
+                        input.set_checked(new_state);
+                    }
+                }
+            }
+            // Update button text
+            if let Some(btn) = document.get_element_by_id("inat-toggle-all") {
+                btn.set_text_content(Some(if new_state { "Deselect All" } else { "Select All" }));
+            }
+        });
+        let _ = toggle_btn.add_event_listener_with_callback("click", toggle_handler.as_ref().unchecked_ref());
+        toggle_handler.forget();
+    }
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Read which species IDs are checked in the species selection list.
+pub fn get_selected_species_ids() -> std::collections::HashSet<String> {
+    let mut ids = std::collections::HashSet::new();
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return ids,
+    };
+    let document = match window.document() {
+        Some(d) => d,
+        None => return ids,
+    };
+    let checkboxes = match document.query_selector_all("#inat-species-items input[type='checkbox']") {
+        Ok(nl) => nl,
+        Err(_) => return ids,
+    };
+    for i in 0..checkboxes.length() {
+        if let Some(node) = checkboxes.item(i) {
+            if let Ok(input) = node.dyn_into::<HtmlInputElement>() {
+                if input.checked() {
+                    if let Some(id) = input.dataset().get("speciesId") {
+                        ids.insert(id);
+                    }
+                }
+            }
+        }
+    }
+    ids
 }
 
 fn pointer_position(canvas: &HtmlCanvasElement, event: &PointerEvent) -> Option<(f64, f64)> {

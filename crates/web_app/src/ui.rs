@@ -68,22 +68,23 @@ pub struct MenuLayout {
     pub start_button: Rect,
 }
 
-pub fn menu_layout(viewport: Viewport) -> MenuLayout {
+pub fn menu_layout(viewport: Viewport, has_inat: bool) -> MenuLayout {
+    let variety_count = if has_inat { 4 } else { 3 };
     if viewport.compact {
         let card_width = viewport.width - 72.0;
-        let card_height = 70.0;
-        let gap = 16.0;
+        let card_height = 62.0;
+        let gap = 12.0;
         let difficulty_cards = option_stack(36.0, 178.0, card_width, card_height, gap, 3);
         let variety_cards = option_stack(
             36.0,
             difficulty_cards
                 .last()
-                .map(|card| card.y + card.height + 64.0)
+                .map(|card| card.y + card.height + 54.0)
                 .unwrap_or(480.0),
             card_width,
             card_height,
             gap,
-            3,
+            variety_count,
         );
 
         MenuLayout {
@@ -100,11 +101,11 @@ pub fn menu_layout(viewport: Viewport) -> MenuLayout {
         let side_padding = 88.0;
         let column_gap = 28.0;
         let card_width = (viewport.width - side_padding * 2.0 - column_gap) / 2.0;
-        let card_height = 68.0;
-        let gap = 18.0;
+        let card_height = if has_inat { 56.0 } else { 68.0 };
+        let gap = if has_inat { 12.0 } else { 18.0 };
         let difficulty_cards = option_stack(side_padding, 188.0, card_width, card_height, gap, 3);
         let variety_x = side_padding + card_width + column_gap;
-        let variety_cards = option_stack(variety_x, 188.0, card_width, card_height, gap, 3);
+        let variety_cards = option_stack(variety_x, 188.0, card_width, card_height, gap, variety_count);
 
         MenuLayout {
             difficulty_cards,
@@ -259,9 +260,26 @@ pub fn primary_button_rect(viewport: Viewport) -> Rect {
     let height = if viewport.compact { 56.0 } else { 48.0 };
     Rect {
         x: (viewport.width - width) / 2.0,
-        y: viewport.height - if viewport.compact { 92.0 } else { 74.0 },
+        y: if viewport.compact { viewport.height / 2.0 + 30.0 } else { viewport.height / 2.0 + 20.0 },
         width,
         height,
+    }
+}
+
+/// Button rect for the basket fact "Continue" at the bottom of the fact box.
+pub fn basket_fact_button_rect(viewport: Viewport) -> Rect {
+    let fact_box = if viewport.compact {
+        Rect { x: 48.0, y: 250.0, width: viewport.width - 96.0, height: 470.0 }
+    } else {
+        Rect { x: 80.0, y: 220.0, width: viewport.width - 160.0, height: 220.0 }
+    };
+    let btn_w = if viewport.compact { 240.0 } else { 200.0 };
+    let btn_h = if viewport.compact { 52.0 } else { 44.0 };
+    Rect {
+        x: fact_box.x + (fact_box.width - btn_w) / 2.0,
+        y: fact_box.y + fact_box.height - if viewport.compact { 70.0 } else { 62.0 },
+        width: btn_w,
+        height: btn_h,
     }
 }
 
@@ -274,7 +292,7 @@ pub fn secondary_button_rect(viewport: Viewport) -> Rect {
     let height = if viewport.compact { 52.0 } else { 44.0 };
     Rect {
         x: (viewport.width - width) / 2.0,
-        y: viewport.height - if viewport.compact { 156.0 } else { 130.0 },
+        y: if viewport.compact { viewport.height / 2.0 - 36.0 } else { viewport.height / 2.0 - 36.0 },
         width,
         height,
     }
@@ -293,7 +311,7 @@ mod tests {
 
     #[test]
     fn menu_layout_exposes_clickable_cards_and_button() {
-        let layout = menu_layout(Viewport::compact());
+        let layout = menu_layout(Viewport::compact(), false);
         assert_eq!(layout.difficulty_cards.len(), 3);
         assert_eq!(layout.variety_cards.len(), 3);
         assert!(layout.start_button.width > 0.0);

@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sporefall</title>
+    <title>Sporefall 🍄</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍄‍🟫</text></svg>" />
     <link data-trunk rel="css" href="styles.css" />
     <link data-trunk rel="rust" href="crates/web_app/Cargo.toml" />
     <link data-trunk rel="copy-file" href="assets/mushroom-images/chanterelle.jpg" />
@@ -60,12 +61,19 @@
               <input id="inat-end-date" type="date" />
             </label>
             <button id="inat-import-button" class="inat-button" type="button">
-              Import &amp; Play
+              Import
             </button>
           </div>
           <p id="inat-status" class="inat-status inat-status--idle" role="status">
-            Pick a username and date range, then import fungi observations.
+            Enter a username to import all fungi observations.
           </p>
+          <div id="inat-species-list" class="inat-species-list" hidden>
+            <div class="inat-species-list__header">
+              <h3>Imported Species</h3>
+              <button id="inat-toggle-all" class="inat-toggle-btn" type="button">Deselect All</button>
+            </div>
+            <ul id="inat-species-items" class="inat-species-items"></ul>
+          </div>
         </section>
       </section>
     </main>

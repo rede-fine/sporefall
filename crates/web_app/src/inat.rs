@@ -4,9 +4,10 @@ use gloo_net::http::Request;
 use serde::Deserialize;
 
 use crate::catalog::{find_catalog_entry, CatalogProvenance, RuntimeCatalogEntry};
+use crate::species_db;
 
 const FUNGI_TAXON_ID: u32 = 47170;
-const MAX_IMPORT_SPECIES: usize = 28;
+const MAX_IMPORT_SPECIES: usize = 200;
 const PAGE_SIZE: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,10 +26,13 @@ impl ImportRequest {
         if user_login.is_empty() {
             return Err("Enter an iNaturalist username.".to_owned());
         }
-        if !looks_like_date(start_date) || !looks_like_date(end_date) {
-            return Err("Choose both start and end dates.".to_owned());
+        if !end_date.is_empty() && !looks_like_date(end_date) {
+            return Err("The end date is not valid.".to_owned());
         }
-        if start_date > end_date {
+        if !start_date.is_empty() && !looks_like_date(start_date) {
+            return Err("The start date is not valid.".to_owned());
+        }
+        if !start_date.is_empty() && !end_date.is_empty() && start_date > end_date {
             return Err("The start date must be on or before the end date.".to_owned());
         }
         Ok(())
@@ -60,15 +64,21 @@ pub async fn import_catalog(request: ImportRequest) -> Result<ImportedCatalog, S
     let normalized_login = request.user_login.trim().to_owned();
 
     loop {
-        let url = format!(
-            "https://api.inaturalist.org/v1/observations?user_login={}&taxon_id={}&photos=true&d1={}&d2={}&order_by=observed_on&order=desc&per_page={}&page={}",
+        let mut url = format!(
+            "https://api.inaturalist.org/v1/observations?user_login={}&taxon_id={}&photos=true&order_by=observed_on&order=desc&per_page={}&page={}",
             encode_component(&normalized_login),
             FUNGI_TAXON_ID,
-            encode_component(request.start_date.trim()),
-            encode_component(request.end_date.trim()),
             PAGE_SIZE,
             page
         );
+        let start_trimmed = request.start_date.trim();
+        let end_trimmed = request.end_date.trim();
+        if !start_trimmed.is_empty() {
+            url.push_str(&format!("&d1={}", encode_component(start_trimmed)));
+        }
+        if !end_trimmed.is_empty() {
+            url.push_str(&format!("&d2={}", encode_component(end_trimmed)));
+        }
 
         let response = Request::get(&url)
             .send()
@@ -98,6 +108,16 @@ pub async fn import_catalog(request: ImportRequest) -> Result<ImportedCatalog, S
             if let Some(entry) = observation_to_entry(&observation) {
                 if seen_species.insert(entry.id.clone()) {
                     entries.push(entry);
+                } else {
+                    // Same species seen again — add photos to gallery
+                    if let Some(existing) = entries.iter_mut().find(|e| e.id == entry.id) {
+                        // Add the primary photo from this observation
+                        if let Some(url) = &entry.provenance.image_url {
+                            if existing.provenance.gallery_urls.len() < 5 {
+                                existing.provenance.gallery_urls.push(url.clone());
+                            }
+                        }
+                    }
                 }
             }
 
@@ -117,7 +137,7 @@ pub async fn import_catalog(request: ImportRequest) -> Result<ImportedCatalog, S
 
     if entries.is_empty() {
         return Err(
-            "No supported fungi observations matched Sporefall's catalog. Try a wider date range."
+            "No fungi species with photos found. Check the username or try without date filters."
                 .to_owned(),
         );
     }
@@ -139,32 +159,58 @@ fn observation_to_entry(observation: &Observation) -> Option<RuntimeCatalogEntry
         return None;
     }
 
-    let catalog_entry = find_catalog_entry(
-        &taxon.name,
-        taxon.preferred_common_name
-            .as_deref()
-            .or(observation.species_guess.as_deref()),
-    )?;
+    // Must have a latin name at species level
+    let latin_name = &taxon.name;
+    if latin_name.is_empty() || !latin_name.contains(' ') {
+        return None; // Skip genus-only or empty names
+    }
 
-    let photo = observation
-        .photos
-        .first()
+    // Try to get a photo — prefer taxon default (usually CC-licensed, CORS-friendly)
+    // over user observation photos (often all-rights-reserved, CORS-blocked)
+    let photo = taxon
+        .default_photo
+        .as_ref()
+        .filter(|p| p.license_code.is_some()) // Only if it has a license (CC)
+        .or_else(|| observation.photos.first())
         .or(taxon.default_photo.as_ref())?;
     let image_url = photo
         .medium_url
         .clone()
         .unwrap_or_else(|| promote_photo_url(&photo.url));
 
+    // Use curated catalog entry if available, otherwise use extended DB
+    let (id, targets) = if let Some(catalog_entry) = find_catalog_entry(
+        latin_name,
+        taxon.preferred_common_name
+            .as_deref()
+            .or(observation.species_guess.as_deref()),
+    ) {
+        (catalog_entry.id.to_owned(), catalog_entry.targets)
+    } else {
+        let slug = slugify(latin_name);
+        let targets = species_db::lookup_targets(latin_name);
+        (slug, targets)
+    };
+
+    let display_name = taxon
+        .preferred_common_name
+        .clone()
+        .or_else(|| observation.species_guess.clone())
+        .unwrap_or_else(|| latin_name.clone());
+
+    // Collect additional photos from this observation for gallery
+    let gallery_urls: Vec<String> = observation.photos.iter()
+        .skip(1)  // First photo is the primary one
+        .filter_map(|p| p.medium_url.clone().or_else(|| Some(promote_photo_url(&p.url))))
+        .take(4)
+        .collect();
+
     Some(RuntimeCatalogEntry {
-        id: catalog_entry.id.to_owned(),
-        display_name: taxon
-            .preferred_common_name
-            .clone()
-            .or_else(|| observation.species_guess.clone())
-            .unwrap_or_else(|| catalog_entry.display_name.to_owned()),
-        latin_name: taxon.name.clone(),
-        image_key: format!("inat-{}-{}", catalog_entry.id, observation.id),
-        targets: catalog_entry.targets,
+        id: id.clone(),
+        display_name,
+        latin_name: latin_name.clone(),
+        image_key: format!("inat-{}-{}", id, observation.id),
+        targets,
         provenance: CatalogProvenance {
             source_name: "iNaturalist".to_owned(),
             source_url: observation.uri.clone(),
@@ -176,8 +222,21 @@ fn observation_to_entry(observation: &Observation) -> Option<RuntimeCatalogEntry
             image_attribution: photo.attribution.clone(),
             observed_on: observation.observed_on.clone(),
             observer_login: observation.user.as_ref().map(|user| user.login.clone()),
+            gallery_urls,
         },
     })
+}
+
+fn slugify(latin_name: &str) -> String {
+    latin_name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 fn looks_like_date(value: &str) -> bool {

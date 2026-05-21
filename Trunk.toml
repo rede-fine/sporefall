@@ -3,10 +3,6 @@ target = "index.html"
 dist = "dist"
 release = false
 
-[[build.extra_assets]]
-path = "assets/images"
-dest = "images"
-
 [serve]
 addresses = ["127.0.0.1"]
 port = 8080

@@ -4,6 +4,8 @@ Sporefall is a browser game prototype where mushrooms fall into one of four lane
 
 At the start of a run, the player chooses one bucket set (Ecological Role, Cap Color, Peak Season, or Culinary Type). During play, each mushroom has a target lane for the selected set. Correct classifications award points and are added to a visible basket. Incorrect classifications still stack in the chosen lane. A row clear occurs when all lanes are non-empty; one mushroom is removed from each lane and bonus points are awarded.
 
+The current build also supports iNaturalist imports, adaptive fall-speed scaling based on recent accuracy, session-end species struggle stats, observation-photo gallery cycling for imported species, and tap-to-open species cards from the collection review screens.
+
 ## Implementation Overview
 
 This project is a Rust workspace. The game is implemented in Rust and compiled to WebAssembly for the browser.
@@ -56,11 +58,20 @@ This crate is framework-free and browser-free, so it can be tested with normal R
   - score/feedback,
   - basket count,
   - responsive desktop/mobile layouts,
-  - simple per-species mushroom sprite colors.
+  - fact / review / game-over overlays,
+  - species-card overlay,
+  - fallback mushroom sprites when a remote image is still loading.
 - `src/settings.rs`
   - Runtime defaults (lane count, spawn lane, scoring values).
 
 No JavaScript gameplay code is used. JS interop is limited to browser APIs exposed through `wasm-bindgen` and `web-sys`.
+
+## Assets
+
+- Bundled built-in species photos live in `assets/mushroom-images/`.
+- The old duplicate `assets/images/mushrooms/` folder was removed.
+- Imported iNaturalist photos are loaded dynamically at runtime and cached by image key.
+- `assets/data/image_attributions.json` is still the manifest location for bundled-photo provenance work.
 
 ## Frame-to-Frame Flow
 
@@ -84,6 +95,7 @@ Commands:
 ```powershell
 python leaderboard_service.py
 cargo test -p game_core
+cargo check -p web_app --target wasm32-unknown-unknown
 trunk serve --port 8080
 ```
 
